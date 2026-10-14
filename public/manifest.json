@@ -1,0 +1,21 @@
+{
+  "name": "Samama Mortgage - הכנה למבחן ההתאחדות",
+  "short_name": "Samama Prep",
+  "description": "מערכת הכנה ולמידה מתקדמת למבחן ההסמכה של התאחדות יועצי המשכנתאות בישראל.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "dir": "rtl",
+  "lang": "he",
+  "background_color": "#f9f7f2",
+  "theme_color": "#0f1b33",
+  "icons": [
+    {
+      "src": "/logo.png",
+      "sizes": "662x377",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

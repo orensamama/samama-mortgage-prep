@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Heebo } from "next/font/google";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
@@ -14,6 +14,16 @@ export const metadata: Metadata = {
   title: "Samama Mortgage | הכנה למבחן התאחדות יועצי המשכנתאות",
   description:
     "מערכת הכנה ולמידה מתקדמת למבחן ההסמכה של התאחדות יועצי המשכנתאות בישראל.",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Samama Prep",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#0f1b33",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

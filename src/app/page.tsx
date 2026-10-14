@@ -1,3 +1,4 @@
+import Image from "next/image";
 import PracticeSuite from "@/components/PracticeSuite";
 
 export default function Home() {
@@ -5,9 +6,16 @@ export default function Home() {
     <div className="flex flex-1 flex-col bg-brand-cream">
       <section className="border-b border-brand-navy/10 bg-gradient-to-b from-brand-navy to-brand-navy-light">
         <div className="mx-auto flex max-w-6xl flex-col items-center px-6 py-16 text-center">
-          <span className="mb-4 rounded-full border border-brand-gold/30 bg-brand-gold/10 px-4 py-1.5 text-sm font-medium text-brand-gold-light">
-            Samama Mortgage
-          </span>
+          <div className="mb-6 rounded-2xl bg-white p-4 shadow-xl">
+            <Image
+              src="/logo.png"
+              alt="Samama Mortgage"
+              width={662}
+              height={377}
+              priority
+              className="h-16 w-auto object-contain sm:h-20"
+            />
+          </div>
           <h1 className="max-w-2xl text-3xl font-bold leading-tight text-brand-cream sm:text-4xl">
             Samama Mortgage - הכנה למבחן ההתאחדות
           </h1>

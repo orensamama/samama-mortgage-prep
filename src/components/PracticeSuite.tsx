@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { CheckCircle2, RotateCcw, XCircle } from "lucide-react";
+import { CheckCircle2, Lightbulb, RotateCcw, XCircle } from "lucide-react";
 import questionsData from "@/data/questions.json";
 
 type Difficulty = "easy" | "medium" | "hard";
@@ -13,6 +13,7 @@ type Question = {
   options: string[];
   correctAnswer: number;
   explanation: string;
+  detailedExplanation: string;
   difficulty: Difficulty;
 };
 
@@ -35,6 +36,7 @@ export default function PracticeSuite() {
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [score, setScore] = useState(0);
   const [finished, setFinished] = useState(false);
+  const [showDetailed, setShowDetailed] = useState(false);
 
   const total = questions.length;
   const current = questions[currentIndex];
@@ -55,6 +57,7 @@ export default function PracticeSuite() {
     }
     setCurrentIndex((prev) => prev + 1);
     setSelectedAnswer(null);
+    setShowDetailed(false);
   };
 
   const handleRestart = () => {
@@ -62,6 +65,7 @@ export default function PracticeSuite() {
     setSelectedAnswer(null);
     setScore(0);
     setFinished(false);
+    setShowDetailed(false);
   };
 
   if (finished) {
@@ -160,6 +164,27 @@ export default function PracticeSuite() {
             <p className="text-sm leading-7 text-brand-navy/80">
               {current.explanation}
             </p>
+
+            <button
+              type="button"
+              onClick={() => setShowDetailed((prev) => !prev)}
+              aria-expanded={showDetailed}
+              className="mt-4 inline-flex items-center gap-2 rounded-full border border-brand-navy/20 bg-white px-4 py-2 text-sm font-semibold text-brand-navy transition-colors hover:border-brand-gold hover:text-brand-gold"
+            >
+              <Lightbulb size={16} className="shrink-0 text-brand-gold" />
+              אני לא מכיר מספיק את החומר - הרחב לי
+            </button>
+
+            {showDetailed && (
+              <div className="mt-4 rounded-xl border border-brand-navy/15 bg-white p-4">
+                <p className="mb-2 text-sm font-bold text-brand-navy">
+                  הרחבה מעמיקה
+                </p>
+                <p className="whitespace-pre-line text-sm leading-7 text-brand-navy/80">
+                  {current.detailedExplanation}
+                </p>
+              </div>
+            )}
           </div>
         )}
 
