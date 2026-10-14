@@ -23,10 +23,10 @@ export default function AccessibilityPage() {
           במידה ונתקלתם בבעיית נגישות או שיש לכם הצעה לשיפור, נשמח שתפנו
           אלינו בדוא&quot;ל:{" "}
           <a
-            href="mailto:accessibility@samama-mortgage.co.il"
+            href="mailto:orensamama@gmail.com"
             className="font-medium text-brand-navy underline underline-offset-4 hover:text-brand-gold"
           >
-            accessibility@samama-mortgage.co.il
+            orensamama@gmail.com
           </a>{" "}
           או בטלפון:{" "}
           <a

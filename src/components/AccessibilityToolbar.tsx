@@ -29,6 +29,7 @@ function applyPrefs(prefs: Prefs) {
 }
 
 function loadPrefs(): Prefs {
+  if (typeof window === "undefined") return DEFAULT_PREFS;
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
     if (!raw) return DEFAULT_PREFS;
@@ -49,21 +50,12 @@ function savePrefs(prefs: Prefs) {
 
 export default function AccessibilityToolbar() {
   const [open, setOpen] = useState(false);
-  const [prefs, setPrefs] = useState<Prefs>(DEFAULT_PREFS);
-  const [ready, setReady] = useState(false);
+  const [prefs, setPrefs] = useState<Prefs>(loadPrefs);
 
   useEffect(() => {
-    const loaded = loadPrefs();
-    setPrefs(loaded);
-    applyPrefs(loaded);
-    setReady(true);
-  }, []);
-
-  useEffect(() => {
-    if (!ready) return;
     applyPrefs(prefs);
     savePrefs(prefs);
-  }, [prefs, ready]);
+  }, [prefs]);
 
   const update = (patch: Partial<Prefs>) =>
     setPrefs((prev) => ({ ...prev, ...patch }));
