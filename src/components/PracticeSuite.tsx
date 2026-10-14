@@ -1,0 +1,178 @@
+"use client";
+
+import { useState } from "react";
+import { CheckCircle2, RotateCcw, XCircle } from "lucide-react";
+import questionsData from "@/data/questions.json";
+
+type Difficulty = "easy" | "medium" | "hard";
+
+type Question = {
+  id: string;
+  category: string;
+  question: string;
+  options: string[];
+  correctAnswer: number;
+  explanation: string;
+  difficulty: Difficulty;
+};
+
+const questions = questionsData as Question[];
+
+const DIFFICULTY_LABEL: Record<Difficulty, string> = {
+  easy: "קל",
+  medium: "בינוני",
+  hard: "קשה",
+};
+
+const DIFFICULTY_CLASS: Record<Difficulty, string> = {
+  easy: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  medium: "border-amber-200 bg-amber-50 text-amber-700",
+  hard: "border-rose-200 bg-rose-50 text-rose-700",
+};
+
+export default function PracticeSuite() {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
+  const [score, setScore] = useState(0);
+  const [finished, setFinished] = useState(false);
+
+  const total = questions.length;
+  const current = questions[currentIndex];
+  const isLastQuestion = currentIndex === total - 1;
+
+  const handleSelect = (optionIndex: number) => {
+    if (selectedAnswer !== null) return;
+    setSelectedAnswer(optionIndex);
+    if (optionIndex === current.correctAnswer) {
+      setScore((prev) => prev + 1);
+    }
+  };
+
+  const handleNext = () => {
+    if (isLastQuestion) {
+      setFinished(true);
+      return;
+    }
+    setCurrentIndex((prev) => prev + 1);
+    setSelectedAnswer(null);
+  };
+
+  const handleRestart = () => {
+    setCurrentIndex(0);
+    setSelectedAnswer(null);
+    setScore(0);
+    setFinished(false);
+  };
+
+  if (finished) {
+    const percentage = Math.round((score / total) * 100);
+    return (
+      <div className="mx-auto w-full max-w-xl rounded-2xl border border-brand-navy/10 bg-white p-10 text-center shadow-sm">
+        <p className="text-sm font-semibold text-brand-gold">סיימתם את התרגול</p>
+        <p className="mt-4 text-6xl font-bold text-brand-navy">{percentage}%</p>
+        <p className="mt-3 text-lg text-brand-navy/70">
+          {score} תשובות נכונות מתוך {total}
+        </p>
+        <button
+          type="button"
+          onClick={handleRestart}
+          className="mt-8 inline-flex items-center gap-2 rounded-full bg-brand-navy px-8 py-3 text-base font-semibold text-brand-cream transition-colors hover:bg-brand-navy-light"
+        >
+          <RotateCcw size={18} />
+          התחל תרגול מחדש
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mx-auto w-full max-w-xl">
+      <div className="mb-6">
+        <div className="mb-2 flex items-center justify-between text-sm font-medium text-brand-navy/70">
+          <span>
+            שאלה {currentIndex + 1} מתוך {total}
+          </span>
+          <span>{Math.round(((currentIndex + 1) / total) * 100)}%</span>
+        </div>
+        <div className="h-2 w-full overflow-hidden rounded-full bg-brand-navy/10">
+          <div
+            className="h-full rounded-full bg-brand-gold transition-all"
+            style={{ width: `${((currentIndex + 1) / total) * 100}%` }}
+          />
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-brand-navy/10 bg-white p-6 shadow-sm sm:p-8">
+        <div className="mb-5 flex flex-wrap items-center gap-2">
+          <span className="rounded-full border border-brand-navy/15 bg-brand-navy/5 px-3 py-1 text-xs font-semibold text-brand-navy">
+            {current.category}
+          </span>
+          <span
+            className={`rounded-full border px-3 py-1 text-xs font-semibold ${DIFFICULTY_CLASS[current.difficulty]}`}
+          >
+            {DIFFICULTY_LABEL[current.difficulty]}
+          </span>
+        </div>
+
+        <h2 className="mb-6 text-xl font-bold leading-8 text-brand-navy">
+          {current.question}
+        </h2>
+
+        <div className="flex flex-col gap-3">
+          {current.options.map((option, index) => {
+            const isCorrectOption = index === current.correctAnswer;
+            const isSelectedOption = index === selectedAnswer;
+            const showResult = selectedAnswer !== null;
+
+            let stateClass =
+              "border-brand-navy/15 bg-white hover:border-brand-gold hover:bg-brand-gold/5";
+            if (showResult && isCorrectOption) {
+              stateClass = "border-emerald-400 bg-emerald-50 text-emerald-800";
+            } else if (showResult && isSelectedOption && !isCorrectOption) {
+              stateClass = "border-rose-400 bg-rose-50 text-rose-800";
+            } else if (showResult) {
+              stateClass = "border-brand-navy/10 bg-white text-brand-navy/40";
+            }
+
+            return (
+              <button
+                key={index}
+                type="button"
+                onClick={() => handleSelect(index)}
+                disabled={showResult}
+                className={`flex items-center justify-between gap-3 rounded-xl border px-4 py-3 text-start text-base font-medium text-brand-navy transition-colors disabled:cursor-default ${stateClass}`}
+              >
+                <span>{option}</span>
+                {showResult && isCorrectOption && (
+                  <CheckCircle2 size={20} className="shrink-0 text-emerald-600" />
+                )}
+                {showResult && isSelectedOption && !isCorrectOption && (
+                  <XCircle size={20} className="shrink-0 text-rose-600" />
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        {selectedAnswer !== null && (
+          <div className="mt-6 rounded-xl border border-brand-gold/30 bg-brand-gold/10 p-4">
+            <p className="mb-1 text-sm font-bold text-brand-navy">הסבר</p>
+            <p className="text-sm leading-7 text-brand-navy/80">
+              {current.explanation}
+            </p>
+          </div>
+        )}
+
+        {selectedAnswer !== null && (
+          <button
+            type="button"
+            onClick={handleNext}
+            className="mt-6 w-full rounded-full bg-brand-navy py-3 text-base font-semibold text-brand-cream transition-colors hover:bg-brand-navy-light"
+          >
+            {isLastQuestion ? "סיום וצפייה בתוצאות" : "השאלה הבאה"}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
