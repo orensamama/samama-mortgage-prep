@@ -1,23 +1,11 @@
 "use client";
 
-import { useState } from "react";
-import { CheckCircle2, Lightbulb, RotateCcw, XCircle } from "lucide-react";
-import questionsData from "@/data/questions.json";
-
-type Difficulty = "easy" | "medium" | "hard";
-
-type Question = {
-  id: string;
-  category: string;
-  question: string;
-  options: string[];
-  correctAnswer: number;
-  explanation: string;
-  detailedExplanation: string;
-  difficulty: Difficulty;
-};
-
-const questions = questionsData as Question[];
+import { useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { CheckCircle2, Lightbulb, RotateCcw, X, XCircle } from "lucide-react";
+import { questions, type Difficulty } from "@/lib/questions";
+import { getQuestionsByTag, getTagConcept } from "@/lib/tagConcepts";
+import TagConceptModal from "@/components/TagConceptModal";
 
 const DIFFICULTY_LABEL: Record<Difficulty, string> = {
   easy: "קל",
@@ -31,16 +19,40 @@ const DIFFICULTY_CLASS: Record<Difficulty, string> = {
   hard: "border-rose-200 bg-rose-50 text-rose-700",
 };
 
+function formatTagLabel(tag: string): string {
+  return tag.replace(/^#/, "").replaceAll("_", " ");
+}
+
 export default function PracticeSuite() {
+  const searchParams = useSearchParams();
+  const initialTag = searchParams.get("tag");
+
+  const [activeTag, setActiveTag] = useState<string | null>(initialTag);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [score, setScore] = useState(0);
   const [finished, setFinished] = useState(false);
   const [showDetailed, setShowDetailed] = useState(false);
+  const [modalTag, setModalTag] = useState<string | null>(null);
 
-  const total = questions.length;
-  const current = questions[currentIndex];
+  const pool = useMemo(() => {
+    if (!activeTag) return questions;
+    const filtered = getQuestionsByTag(activeTag);
+    return filtered.length > 0 ? filtered : questions;
+  }, [activeTag]);
+
+  const total = pool.length;
+  const current = pool[currentIndex];
   const isLastQuestion = currentIndex === total - 1;
+  const activeTagLabel = activeTag ? formatTagLabel(activeTag) : null;
+
+  const resetProgress = () => {
+    setCurrentIndex(0);
+    setSelectedAnswer(null);
+    setScore(0);
+    setFinished(false);
+    setShowDetailed(false);
+  };
 
   const handleSelect = (optionIndex: number) => {
     if (selectedAnswer !== null) return;
@@ -61,12 +73,21 @@ export default function PracticeSuite() {
   };
 
   const handleRestart = () => {
-    setCurrentIndex(0);
-    setSelectedAnswer(null);
-    setScore(0);
-    setFinished(false);
-    setShowDetailed(false);
+    resetProgress();
   };
+
+  const handleClearFilter = () => {
+    setActiveTag(null);
+    resetProgress();
+  };
+
+  const handlePracticeTag = (tag: string) => {
+    setActiveTag(tag);
+    setModalTag(null);
+    resetProgress();
+  };
+
+  const modalConcept = modalTag ? getTagConcept(modalTag) : undefined;
 
   if (finished) {
     const percentage = Math.round((score / total) * 100);
@@ -91,6 +112,22 @@ export default function PracticeSuite() {
 
   return (
     <div className="mx-auto w-full max-w-xl">
+      {activeTagLabel && (
+        <div className="mb-4 flex items-center justify-between gap-2 rounded-full border border-brand-gold/30 bg-brand-gold/10 px-4 py-2 text-sm text-brand-navy">
+          <span>
+            מציג שאלות בנושא: <strong>#{activeTagLabel}</strong>
+          </span>
+          <button
+            type="button"
+            onClick={handleClearFilter}
+            aria-label="הסר סינון"
+            className="rounded-full p-1 hover:bg-brand-navy/5"
+          >
+            <X size={16} />
+          </button>
+        </div>
+      )}
+
       <div className="mb-6">
         <div className="mb-2 flex items-center justify-between text-sm font-medium text-brand-navy/70">
           <span>
@@ -118,9 +155,22 @@ export default function PracticeSuite() {
           </span>
         </div>
 
-        <h2 className="mb-6 text-xl font-bold leading-8 text-brand-navy">
+        <h2 className="mb-4 text-xl font-bold leading-8 text-brand-navy">
           {current.question}
         </h2>
+
+        <div className="mb-6 flex flex-wrap gap-2">
+          {current.tags.map((tag) => (
+            <button
+              key={tag}
+              type="button"
+              onClick={() => setModalTag(tag)}
+              className="rounded-full border border-brand-navy/15 bg-brand-cream px-3 py-1 text-xs font-medium text-brand-navy/70 transition-colors hover:border-brand-gold hover:text-brand-gold"
+            >
+              #{formatTagLabel(tag)}
+            </button>
+          ))}
+        </div>
 
         <div className="flex flex-col gap-3">
           {current.options.map((option, index) => {
@@ -198,6 +248,14 @@ export default function PracticeSuite() {
           </button>
         )}
       </div>
+
+      {modalConcept && (
+        <TagConceptModal
+          concept={modalConcept}
+          onClose={() => setModalTag(null)}
+          onPracticeTag={handlePracticeTag}
+        />
+      )}
     </div>
   );
 }
