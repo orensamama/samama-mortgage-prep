@@ -15,8 +15,8 @@ const ACTION_CARDS = [
     title: "סימולציית מבחן מלאה",
     description: "חוויית מבחן בתנאי אמת עם מגבלת זמן וציון סופי.",
     icon: Timer,
-    href: null,
-    cta: "בקרוב",
+    href: "/exam",
+    cta: "התחילו סימולציה",
   },
   {
     title: "תרגול ממוקד לפי נושאים",

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   CheckCircle2,
@@ -9,6 +9,7 @@ import {
   LayoutGrid,
   Lightbulb,
   RotateCcw,
+  Shuffle,
   X,
   XCircle,
 } from "lucide-react";
@@ -18,6 +19,16 @@ import TagConceptModal from "@/components/TagConceptModal";
 import ReportIssueModal from "@/components/ReportIssueModal";
 
 const REPORTS_STORAGE_KEY = "samama-question-reports";
+const SHUFFLE_STORAGE_KEY = "samama-shuffle-pref";
+
+function shuffleArray<T>(items: T[]): T[] {
+  const result = [...items];
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+  return result;
+}
 
 function saveQuestionReport(questionId: string, message: string) {
   const entry = { questionId, message, timestamp: new Date().toISOString() };
@@ -59,12 +70,35 @@ export default function PracticeSuite() {
   const [finished, setFinished] = useState(false);
   const [modalTag, setModalTag] = useState<string | null>(null);
   const [gridOpen, setGridOpen] = useState(false);
+  const [shuffleEnabled, setShuffleEnabled] = useState(false);
+  const [shuffleSeed, setShuffleSeed] = useState(0);
 
-  const pool = useMemo(() => {
+  useEffect(() => {
+    try {
+      const stored = window.localStorage.getItem(SHUFFLE_STORAGE_KEY);
+      if (stored === "true") {
+        // Reading the saved preference from localStorage on mount - an external
+        // system sync, not derived state, so setState here is intentional.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setShuffleEnabled(true);
+        setShuffleSeed((prev) => prev + 1);
+      }
+    } catch {
+      // localStorage may be unavailable (private browsing, quota, etc.)
+    }
+  }, []);
+
+  const basePool = useMemo(() => {
     if (!activeTag) return questions;
     const filtered = getQuestionsByTag(activeTag);
     return filtered.length > 0 ? filtered : questions;
   }, [activeTag]);
+
+  const pool = useMemo(() => {
+    return shuffleEnabled ? shuffleArray(basePool) : basePool;
+    // shuffleSeed is a trigger to re-shuffle on toggle/mount; its value itself is unused
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [basePool, shuffleEnabled, shuffleSeed]);
 
   const total = pool.length;
   const current = pool[currentIndex];
@@ -124,6 +158,20 @@ export default function PracticeSuite() {
     resetProgress();
   };
 
+  const handleToggleShuffle = () => {
+    setShuffleEnabled((prev) => {
+      const next = !prev;
+      try {
+        window.localStorage.setItem(SHUFFLE_STORAGE_KEY, String(next));
+      } catch {
+        // localStorage may be unavailable (private browsing, quota, etc.)
+      }
+      return next;
+    });
+    setShuffleSeed((prev) => prev + 1);
+    resetProgress();
+  };
+
   const modalConcept = modalTag ? getTagConcept(modalTag) : undefined;
 
   if (finished) {
@@ -149,6 +197,22 @@ export default function PracticeSuite() {
 
   return (
     <div className="mx-auto w-full max-w-xl">
+      <div className="mb-4 flex justify-end">
+        <button
+          type="button"
+          onClick={handleToggleShuffle}
+          aria-pressed={shuffleEnabled}
+          className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
+            shuffleEnabled
+              ? "border-brand-gold bg-brand-gold/10 text-brand-gold"
+              : "border-brand-navy/15 bg-white text-brand-navy hover:border-brand-gold hover:text-brand-gold"
+          }`}
+        >
+          <Shuffle size={14} />
+          {shuffleEnabled ? "סדר אקראי" : "סדר רגיל"}
+        </button>
+      </div>
+
       {activeTagLabel && (
         <div className="mb-4 flex items-center justify-between gap-2 rounded-full border border-brand-gold/30 bg-brand-gold/10 px-4 py-2 text-sm text-brand-navy">
           <span>
