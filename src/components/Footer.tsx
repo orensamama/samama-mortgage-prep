@@ -28,6 +28,15 @@ export default function Footer() {
           הצהרת נגישות, תנאי שימוש ומדיניות פרטיות
         </Link>
       </div>
+
+      <div className="border-t border-brand-cream/10">
+        <p className="mx-auto max-w-6xl px-6 py-4 text-center text-xs leading-6 text-brand-cream/50">
+          הבהרה: האפליקציה Samama Prep הינה כלי עזר לימודי ואינה מהווה ייעוץ
+          משפטי, פיננסי או מענה רשמי מטעם גוף בנקאי/ממשלתי. התשובות מבוססות
+          על שאלוני עבר ורגולציה מעודכנת, אך האחריות על הדיוק המקצועי
+          והשימוש במידע חלה על המשתמש בלבד.
+        </p>
+      </div>
     </footer>
   );
 }

@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import {
   CheckCircle2,
   ChevronDown,
+  Flag,
   LayoutGrid,
   Lightbulb,
   RotateCcw,
@@ -14,6 +15,23 @@ import {
 import { questions, type Difficulty, type Question } from "@/lib/questions";
 import { getQuestionsByTag, getTagConcept } from "@/lib/tagConcepts";
 import TagConceptModal from "@/components/TagConceptModal";
+import ReportIssueModal from "@/components/ReportIssueModal";
+
+const REPORTS_STORAGE_KEY = "samama-question-reports";
+
+function saveQuestionReport(questionId: string, message: string) {
+  const entry = { questionId, message, timestamp: new Date().toISOString() };
+  console.log("Question report submitted:", entry);
+  try {
+    const raw = window.localStorage.getItem(REPORTS_STORAGE_KEY);
+    const existing = raw ? JSON.parse(raw) : [];
+    const next = Array.isArray(existing) ? [...existing, entry] : [entry];
+    window.localStorage.setItem(REPORTS_STORAGE_KEY, JSON.stringify(next));
+  } catch {
+    // localStorage may be unavailable (private browsing, quota, etc.) - the
+    // console.log above already preserves the report for this session.
+  }
+}
 
 const DIFFICULTY_LABEL: Record<Difficulty, string> = {
   easy: "קל",
@@ -262,6 +280,7 @@ function QuestionCard({
 }) {
   const [showDetailed, setShowDetailed] = useState(false);
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
+  const [reportOpen, setReportOpen] = useState(false);
 
   return (
     <div className="rounded-2xl border border-brand-navy/10 bg-white p-6 shadow-sm sm:p-8">
@@ -395,7 +414,23 @@ function QuestionCard({
               )}
             </div>
           )}
+
+          <button
+            type="button"
+            onClick={() => setReportOpen(true)}
+            className="mt-4 inline-flex items-center gap-1.5 text-xs font-medium text-brand-navy/40 transition-colors hover:text-brand-gold"
+          >
+            <Flag size={13} className="shrink-0" />
+            מצאת טעות או עדכון רגולטורי? לחץ לדיווח
+          </button>
         </div>
+      )}
+
+      {reportOpen && (
+        <ReportIssueModal
+          onClose={() => setReportOpen(false)}
+          onSubmit={(message) => saveQuestionReport(question.id, message)}
+        />
       )}
     </div>
   );
