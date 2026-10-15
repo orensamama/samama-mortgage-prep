@@ -4,7 +4,7 @@ import { BookOpen, Hash, Lightbulb, Timer } from "lucide-react";
 
 const ACTION_CARDS = [
   {
-    title: "תרגול שאלות מתוך מאגר ההתאחדות",
+    title: "תרגול שאלות מתוך מאגר השאלות",
     description:
       "תרגלו מתוך מאגר שאלות רחב בכל נושאי המבחן, עם משוב מיידי והסבר לכל שאלה.",
     icon: BookOpen,
@@ -52,11 +52,11 @@ export default function Home() {
             />
           </div>
           <h1 className="max-w-2xl text-3xl font-bold leading-tight text-brand-cream sm:text-4xl">
-            Samama Mortgage - הכנה למבחן ההתאחדות
+            Samama Mortgage - למידה ותרגול מקצועי בייעוץ משכנתאות
           </h1>
           <p className="mt-4 max-w-xl text-base leading-7 text-brand-cream/70">
-            הפלטפורמה שתלווה אתכם צעד אחר צעד להצלחה במבחן ההסמכה של התאחדות
-            יועצי המשכנתאות.
+            הפלטפורמה שתלווה אתכם צעד אחר צעד לשליטה מקצועית בעולם ייעוץ
+            המשכנתאות.
           </p>
           <Link
             href="/practice"

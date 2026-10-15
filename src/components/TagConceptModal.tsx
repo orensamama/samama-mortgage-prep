@@ -25,7 +25,10 @@ export default function TagConceptModal({
         className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl"
       >
         <div className="mb-4 flex items-start justify-between gap-3">
-          <h3 className="text-lg font-bold text-brand-navy">#{concept.label}</h3>
+          <div>
+            <h3 className="text-lg font-bold text-brand-navy">{concept.term}</h3>
+            <p className="text-xs font-medium text-brand-gold">#{concept.label}</p>
+          </div>
           <button
             type="button"
             onClick={onClose}
@@ -36,14 +39,20 @@ export default function TagConceptModal({
           </button>
         </div>
 
-        <p className="mb-6 text-sm leading-7 text-brand-navy/80">
+        <p className="mb-4 text-sm leading-7 text-brand-navy/80">
           {concept.description}
         </p>
+
+        {concept.note && (
+          <div className="mb-6 rounded-xl border border-brand-gold/30 bg-brand-gold/10 p-3">
+            <p className="text-sm leading-7 text-brand-navy/80">{concept.note}</p>
+          </div>
+        )}
 
         <button
           type="button"
           onClick={() => onPracticeTag(concept.tag)}
-          className="w-full rounded-full bg-brand-navy py-3 text-sm font-semibold text-brand-cream transition-colors hover:bg-brand-navy-light"
+          className="mt-2 w-full rounded-full bg-brand-navy py-3 text-sm font-semibold text-brand-cream transition-colors hover:bg-brand-navy-light"
         >
           תרגל שאלות בנושא זה בלבד
         </button>

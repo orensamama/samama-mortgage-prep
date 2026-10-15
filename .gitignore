@@ -36,6 +36,12 @@ yarn-error.log*
 # vercel
 .vercel
 
+# source reference material (exam PDFs, dictionary, syllabus) - not shipped
+/raw_questions
+
+# Claude Code runtime session lock
+.claude/scheduled_tasks.lock
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

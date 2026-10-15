@@ -2,6 +2,11 @@ import questionsData from "@/data/questions.json";
 
 export type Difficulty = "easy" | "medium" | "hard";
 
+export type ConceptFaq = {
+  question: string;
+  answer: string;
+};
+
 export type Question = {
   id: string;
   category: string;
@@ -11,6 +16,7 @@ export type Question = {
   correctAnswer: number;
   explanation: string;
   detailedExplanation: string;
+  conceptFaqs: ConceptFaq[];
   difficulty: Difficulty;
 };
 

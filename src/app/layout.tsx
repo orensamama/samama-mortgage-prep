@@ -11,9 +11,9 @@ const heebo = Heebo({
 });
 
 export const metadata: Metadata = {
-  title: "Samama Mortgage | הכנה למבחן התאחדות יועצי המשכנתאות",
+  title: "Samama Mortgage - למידה ותרגול מקצועי בייעוץ משכנתאות",
   description:
-    "מערכת הכנה ולמידה מתקדמת למבחן ההסמכה של התאחדות יועצי המשכנתאות בישראל.",
+    "מערכת למידה ותרגול מקצועי בייעוץ משכנתאות: מילון מושגים, תרגול שאלות ותכנים רגולטוריים מעודכנים.",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,

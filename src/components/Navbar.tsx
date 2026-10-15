@@ -36,7 +36,7 @@ export default function Navbar() {
               Samama Mortgage
             </span>
             <span className="text-xs font-medium text-brand-gold">
-              הכנה למבחן התאחדות יועצי המשכנתאות
+              למידה ותרגול מקצועי בייעוץ משכנתאות
             </span>
           </span>
         </Link>

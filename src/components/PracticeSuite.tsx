@@ -2,8 +2,16 @@
 
 import { useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { CheckCircle2, Lightbulb, RotateCcw, X, XCircle } from "lucide-react";
-import { questions, type Difficulty } from "@/lib/questions";
+import {
+  CheckCircle2,
+  ChevronDown,
+  LayoutGrid,
+  Lightbulb,
+  RotateCcw,
+  X,
+  XCircle,
+} from "lucide-react";
+import { questions, type Difficulty, type Question } from "@/lib/questions";
 import { getQuestionsByTag, getTagConcept } from "@/lib/tagConcepts";
 import TagConceptModal from "@/components/TagConceptModal";
 
@@ -29,11 +37,10 @@ export default function PracticeSuite() {
 
   const [activeTag, setActiveTag] = useState<string | null>(initialTag);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
-  const [score, setScore] = useState(0);
+  const [answers, setAnswers] = useState<(number | null)[]>([]);
   const [finished, setFinished] = useState(false);
-  const [showDetailed, setShowDetailed] = useState(false);
   const [modalTag, setModalTag] = useState<string | null>(null);
+  const [gridOpen, setGridOpen] = useState(false);
 
   const pool = useMemo(() => {
     if (!activeTag) return questions;
@@ -45,21 +52,31 @@ export default function PracticeSuite() {
   const current = pool[currentIndex];
   const isLastQuestion = currentIndex === total - 1;
   const activeTagLabel = activeTag ? formatTagLabel(activeTag) : null;
+  const selectedAnswer = answers[currentIndex] ?? null;
+  const score = answers.filter(
+    (answer, i) => answer !== null && answer === pool[i]?.correctAnswer,
+  ).length;
+  const answeredCount = answers.filter((a) => a !== null).length;
 
   const resetProgress = () => {
     setCurrentIndex(0);
-    setSelectedAnswer(null);
-    setScore(0);
+    setAnswers(Array(pool.length).fill(null));
     setFinished(false);
-    setShowDetailed(false);
+    setGridOpen(false);
   };
 
   const handleSelect = (optionIndex: number) => {
     if (selectedAnswer !== null) return;
-    setSelectedAnswer(optionIndex);
-    if (optionIndex === current.correctAnswer) {
-      setScore((prev) => prev + 1);
-    }
+    setAnswers((prev) => {
+      const next = prev.length === total ? [...prev] : Array(total).fill(null);
+      next[currentIndex] = optionIndex;
+      return next;
+    });
+  };
+
+  const goTo = (index: number) => {
+    setCurrentIndex(Math.max(0, Math.min(total - 1, index)));
+    setGridOpen(false);
   };
 
   const handleNext = () => {
@@ -67,9 +84,11 @@ export default function PracticeSuite() {
       setFinished(true);
       return;
     }
-    setCurrentIndex((prev) => prev + 1);
-    setSelectedAnswer(null);
-    setShowDetailed(false);
+    goTo(currentIndex + 1);
+  };
+
+  const handlePrevious = () => {
+    goTo(currentIndex - 1);
   };
 
   const handleRestart = () => {
@@ -133,7 +152,19 @@ export default function PracticeSuite() {
           <span>
             שאלה {currentIndex + 1} מתוך {total}
           </span>
-          <span>{Math.round(((currentIndex + 1) / total) * 100)}%</span>
+          <button
+            type="button"
+            onClick={() => setGridOpen((prev) => !prev)}
+            aria-expanded={gridOpen}
+            className="flex items-center gap-1.5 rounded-full border border-brand-navy/15 bg-white px-3 py-1 text-xs font-semibold text-brand-navy hover:border-brand-gold hover:text-brand-gold"
+          >
+            <LayoutGrid size={14} />
+            מפת שאלות
+            <ChevronDown
+              size={14}
+              className={`transition-transform ${gridOpen ? "rotate-180" : ""}`}
+            />
+          </button>
         </div>
         <div className="h-2 w-full overflow-hidden rounded-full bg-brand-navy/10">
           <div
@@ -141,113 +172,71 @@ export default function PracticeSuite() {
             style={{ width: `${((currentIndex + 1) / total) * 100}%` }}
           />
         </div>
-      </div>
 
-      <div className="rounded-2xl border border-brand-navy/10 bg-white p-6 shadow-sm sm:p-8">
-        <div className="mb-5 flex flex-wrap items-center gap-2">
-          <span className="rounded-full border border-brand-navy/15 bg-brand-navy/5 px-3 py-1 text-xs font-semibold text-brand-navy">
-            {current.category}
-          </span>
-          <span
-            className={`rounded-full border px-3 py-1 text-xs font-semibold ${DIFFICULTY_CLASS[current.difficulty]}`}
-          >
-            {DIFFICULTY_LABEL[current.difficulty]}
-          </span>
-        </div>
-
-        <h2 className="mb-4 text-xl font-bold leading-8 text-brand-navy">
-          {current.question}
-        </h2>
-
-        <div className="mb-6 flex flex-wrap gap-2">
-          {current.tags.map((tag) => (
-            <button
-              key={tag}
-              type="button"
-              onClick={() => setModalTag(tag)}
-              className="rounded-full border border-brand-navy/15 bg-brand-cream px-3 py-1 text-xs font-medium text-brand-navy/70 transition-colors hover:border-brand-gold hover:text-brand-gold"
-            >
-              #{formatTagLabel(tag)}
-            </button>
-          ))}
-        </div>
-
-        <div className="flex flex-col gap-3">
-          {current.options.map((option, index) => {
-            const isCorrectOption = index === current.correctAnswer;
-            const isSelectedOption = index === selectedAnswer;
-            const showResult = selectedAnswer !== null;
-
-            let stateClass =
-              "border-brand-navy/15 bg-white hover:border-brand-gold hover:bg-brand-gold/5";
-            if (showResult && isCorrectOption) {
-              stateClass = "border-emerald-400 bg-emerald-50 text-emerald-800";
-            } else if (showResult && isSelectedOption && !isCorrectOption) {
-              stateClass = "border-rose-400 bg-rose-50 text-rose-800";
-            } else if (showResult) {
-              stateClass = "border-brand-navy/10 bg-white text-brand-navy/40";
-            }
-
-            return (
-              <button
-                key={index}
-                type="button"
-                onClick={() => handleSelect(index)}
-                disabled={showResult}
-                className={`flex items-center justify-between gap-3 rounded-xl border px-4 py-3 text-start text-base font-medium text-brand-navy transition-colors disabled:cursor-default ${stateClass}`}
-              >
-                <span>{option}</span>
-                {showResult && isCorrectOption && (
-                  <CheckCircle2 size={20} className="shrink-0 text-emerald-600" />
-                )}
-                {showResult && isSelectedOption && !isCorrectOption && (
-                  <XCircle size={20} className="shrink-0 text-rose-600" />
-                )}
-              </button>
-            );
-          })}
-        </div>
-
-        {selectedAnswer !== null && (
-          <div className="mt-6 rounded-xl border border-brand-gold/30 bg-brand-gold/10 p-4">
-            <p className="mb-1 text-sm font-bold text-brand-navy">הסבר</p>
-            <p className="text-sm leading-7 text-brand-navy/80">
-              {current.explanation}
-            </p>
-
-            <button
-              type="button"
-              onClick={() => setShowDetailed((prev) => !prev)}
-              aria-expanded={showDetailed}
-              className="mt-4 inline-flex items-center gap-2 rounded-full border border-brand-navy/20 bg-white px-4 py-2 text-sm font-semibold text-brand-navy transition-colors hover:border-brand-gold hover:text-brand-gold"
-            >
-              <Lightbulb size={16} className="shrink-0 text-brand-gold" />
-              אני לא מכיר מספיק את החומר - הרחב לי
-            </button>
-
-            {showDetailed && (
-              <div className="mt-4 rounded-xl border border-brand-navy/15 bg-white p-4">
-                <p className="mb-2 text-sm font-bold text-brand-navy">
-                  הרחבה מעמיקה
-                </p>
-                <p className="whitespace-pre-line text-sm leading-7 text-brand-navy/80">
-                  {current.detailedExplanation}
-                </p>
-              </div>
-            )}
+        {gridOpen && (
+          <div className="mt-3 rounded-2xl border border-brand-navy/10 bg-white p-4 shadow-sm">
+            <div className="mb-2 flex items-center justify-between text-xs text-brand-navy/60">
+              <span>{answeredCount} מתוך {total} נענו</span>
+              <span>{score} תשובות נכונות עד כה</span>
+            </div>
+            <div className="grid grid-cols-8 gap-2 sm:grid-cols-10">
+              {pool.map((q, i) => {
+                const answer = answers[i] ?? null;
+                const isCurrent = i === currentIndex;
+                let cellClass =
+                  "border-brand-navy/15 bg-brand-cream text-brand-navy/60 hover:border-brand-gold";
+                if (answer !== null) {
+                  cellClass =
+                    answer === q.correctAnswer
+                      ? "border-emerald-400 bg-emerald-50 text-emerald-700"
+                      : "border-rose-400 bg-rose-50 text-rose-700";
+                }
+                return (
+                  <button
+                    key={q.id}
+                    type="button"
+                    onClick={() => goTo(i)}
+                    aria-current={isCurrent}
+                    className={`flex h-9 w-9 items-center justify-center rounded-lg border text-xs font-bold transition-colors ${cellClass} ${
+                      isCurrent ? "ring-2 ring-brand-gold ring-offset-1" : ""
+                    }`}
+                  >
+                    {i + 1}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         )}
+      </div>
 
-        {selectedAnswer !== null && (
+      <QuestionCard
+        key={current.id}
+        question={current}
+        selectedAnswer={selectedAnswer}
+        onSelect={handleSelect}
+        onOpenTag={(tag) => setModalTag(tag)}
+      />
+
+      {selectedAnswer !== null && (
+        <div className="mt-6 flex gap-3">
+          <button
+            type="button"
+            onClick={handlePrevious}
+            disabled={currentIndex === 0}
+            className="flex-1 rounded-full border border-brand-navy/20 py-3 text-base font-semibold text-brand-navy transition-colors hover:border-brand-gold hover:text-brand-gold disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            שאלה קודמת
+          </button>
           <button
             type="button"
             onClick={handleNext}
-            className="mt-6 w-full rounded-full bg-brand-navy py-3 text-base font-semibold text-brand-cream transition-colors hover:bg-brand-navy-light"
+            className="flex-1 rounded-full bg-brand-navy py-3 text-base font-semibold text-brand-cream transition-colors hover:bg-brand-navy-light"
           >
             {isLastQuestion ? "סיום וצפייה בתוצאות" : "השאלה הבאה"}
           </button>
-        )}
-      </div>
+        </div>
+      )}
 
       {modalConcept && (
         <TagConceptModal
@@ -255,6 +244,158 @@ export default function PracticeSuite() {
           onClose={() => setModalTag(null)}
           onPracticeTag={handlePracticeTag}
         />
+      )}
+    </div>
+  );
+}
+
+function QuestionCard({
+  question,
+  selectedAnswer,
+  onSelect,
+  onOpenTag,
+}: {
+  question: Question;
+  selectedAnswer: number | null;
+  onSelect: (index: number) => void;
+  onOpenTag: (tag: string) => void;
+}) {
+  const [showDetailed, setShowDetailed] = useState(false);
+  const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
+
+  return (
+    <div className="rounded-2xl border border-brand-navy/10 bg-white p-6 shadow-sm sm:p-8">
+      <div className="mb-5 flex flex-wrap items-center gap-2">
+        <span className="rounded-full border border-brand-navy/15 bg-brand-navy/5 px-3 py-1 text-xs font-semibold text-brand-navy">
+          {question.category}
+        </span>
+        <span
+          className={`rounded-full border px-3 py-1 text-xs font-semibold ${DIFFICULTY_CLASS[question.difficulty]}`}
+        >
+          {DIFFICULTY_LABEL[question.difficulty]}
+        </span>
+      </div>
+
+      <h2 className="mb-4 text-xl font-bold leading-8 text-brand-navy">
+        {question.question}
+      </h2>
+
+      <div className="mb-6 flex flex-wrap gap-2">
+        {question.tags.map((tag) => (
+          <button
+            key={tag}
+            type="button"
+            onClick={() => onOpenTag(tag)}
+            className="rounded-full border border-brand-navy/15 bg-brand-cream px-3 py-1 text-xs font-medium text-brand-navy/70 transition-colors hover:border-brand-gold hover:text-brand-gold"
+          >
+            #{formatTagLabel(tag)}
+          </button>
+        ))}
+      </div>
+
+      <div className="flex flex-col gap-3">
+        {question.options.map((option, index) => {
+          const isCorrectOption = index === question.correctAnswer;
+          const isSelectedOption = index === selectedAnswer;
+          const showResult = selectedAnswer !== null;
+
+          let stateClass =
+            "border-brand-navy/15 bg-white hover:border-brand-gold hover:bg-brand-gold/5";
+          if (showResult && isCorrectOption) {
+            stateClass = "border-emerald-400 bg-emerald-50 text-emerald-800";
+          } else if (showResult && isSelectedOption && !isCorrectOption) {
+            stateClass = "border-rose-400 bg-rose-50 text-rose-800";
+          } else if (showResult) {
+            stateClass = "border-brand-navy/10 bg-white text-brand-navy/40";
+          }
+
+          return (
+            <button
+              key={index}
+              type="button"
+              onClick={() => onSelect(index)}
+              disabled={showResult}
+              className={`flex items-center justify-between gap-3 rounded-xl border px-4 py-3 text-start text-base font-medium text-brand-navy transition-colors disabled:cursor-default ${stateClass}`}
+            >
+              <span>{option}</span>
+              {showResult && isCorrectOption && (
+                <CheckCircle2 size={20} className="shrink-0 text-emerald-600" />
+              )}
+              {showResult && isSelectedOption && !isCorrectOption && (
+                <XCircle size={20} className="shrink-0 text-rose-600" />
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      {selectedAnswer !== null && (
+        <div className="mt-6 rounded-xl border border-brand-gold/30 bg-brand-gold/10 p-4">
+          <p className="mb-1 text-sm font-bold text-brand-navy">הסבר</p>
+          <p className="text-sm leading-7 text-brand-navy/80">
+            {question.explanation}
+          </p>
+
+          <button
+            type="button"
+            onClick={() => setShowDetailed((prev) => !prev)}
+            aria-expanded={showDetailed}
+            className="mt-4 inline-flex items-center gap-2 rounded-full border border-brand-navy/20 bg-white px-4 py-2 text-sm font-semibold text-brand-navy transition-colors hover:border-brand-gold hover:text-brand-gold"
+          >
+            <Lightbulb size={16} className="shrink-0 text-brand-gold" />
+            אני לא מכיר מספיק את החומר - הרחב לי
+          </button>
+
+          {showDetailed && (
+            <div className="mt-4 rounded-xl border border-brand-navy/15 bg-white p-4">
+              <p className="mb-2 text-sm font-bold text-brand-navy">
+                הרחבה מעמיקה
+              </p>
+              <p className="whitespace-pre-line text-sm leading-7 text-brand-navy/80">
+                {question.detailedExplanation}
+              </p>
+
+              {question.conceptFaqs.length > 0 && (
+                <div className="mt-4 border-t border-brand-navy/10 pt-4">
+                  <p className="mb-2 text-sm font-bold text-brand-navy">
+                    שאלות נפוצות וחיזוק המושג
+                  </p>
+                  <div className="flex flex-col gap-2">
+                    {question.conceptFaqs.map((faq, i) => {
+                      const open = openFaqIndex === i;
+                      return (
+                        <div
+                          key={i}
+                          className="rounded-lg border border-brand-navy/10"
+                        >
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setOpenFaqIndex((prev) => (prev === i ? null : i))
+                            }
+                            aria-expanded={open}
+                            className="flex w-full items-center justify-between gap-2 px-3 py-2.5 text-start text-sm font-semibold text-brand-navy"
+                          >
+                            <span>{faq.question}</span>
+                            <ChevronDown
+                              size={16}
+                              className={`shrink-0 transition-transform ${open ? "rotate-180" : ""}`}
+                            />
+                          </button>
+                          {open && (
+                            <p className="px-3 pb-3 text-sm leading-7 text-brand-navy/80">
+                              {faq.answer}
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       )}
     </div>
   );
