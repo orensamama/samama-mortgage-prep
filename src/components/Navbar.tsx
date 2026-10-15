@@ -10,6 +10,7 @@ const NAV_LINKS = [
   { href: "/practice", label: "תרגול שאלות" },
   { href: "/topics", label: "לפי נושאים" },
   { href: "/concepts", label: "מרכז מושגים" },
+  { href: "/learn", label: "קורס מקצועי" },
 ];
 
 export default function Navbar() {
@@ -42,7 +43,7 @@ export default function Navbar() {
         </Link>
 
         <nav className="hidden items-center gap-6 text-sm font-medium text-brand-navy sm:flex">
-          {NAV_LINKS.slice(0, 3).map((link) => (
+          {NAV_LINKS.slice(1).map((link) => (
             <Link key={link.href} href={link.href} className="hover:text-brand-gold">
               {link.label}
             </Link>

@@ -27,7 +27,11 @@ export default function TagConceptModal({
         <div className="mb-4 flex items-start justify-between gap-3">
           <div>
             <h3 className="text-lg font-bold text-brand-navy">{concept.term}</h3>
-            <p className="text-xs font-medium text-brand-gold">#{concept.label}</p>
+            {concept.category && (
+              <p className="text-xs font-medium text-brand-gold">
+                {concept.category}
+              </p>
+            )}
           </div>
           <button
             type="button"

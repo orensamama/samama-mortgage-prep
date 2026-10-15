@@ -23,7 +23,7 @@ export default function TopicsPage() {
             href={`/practice?tag=${encodeURIComponent(t.tag)}`}
             className="rounded-xl border border-brand-navy/10 bg-white p-4 shadow-sm transition-shadow hover:border-brand-gold hover:shadow-md"
           >
-            <p className="font-bold text-brand-navy">#{t.label}</p>
+            <p className="font-bold text-brand-navy">{t.label}</p>
             <p className="mt-1 text-xs text-brand-navy/60">
               {t.questionIds.length} שאלות
             </p>

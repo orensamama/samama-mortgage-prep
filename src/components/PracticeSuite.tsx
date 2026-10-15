@@ -152,7 +152,7 @@ export default function PracticeSuite() {
       {activeTagLabel && (
         <div className="mb-4 flex items-center justify-between gap-2 rounded-full border border-brand-gold/30 bg-brand-gold/10 px-4 py-2 text-sm text-brand-navy">
           <span>
-            מציג שאלות בנושא: <strong>#{activeTagLabel}</strong>
+            מציג שאלות בנושא: <strong>{activeTagLabel}</strong>
           </span>
           <button
             type="button"
@@ -307,7 +307,7 @@ function QuestionCard({
             onClick={() => onOpenTag(tag)}
             className="rounded-full border border-brand-navy/15 bg-brand-cream px-3 py-1 text-xs font-medium text-brand-navy/70 transition-colors hover:border-brand-gold hover:text-brand-gold"
           >
-            #{formatTagLabel(tag)}
+            {formatTagLabel(tag)}
           </button>
         ))}
       </div>

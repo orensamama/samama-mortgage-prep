@@ -74,9 +74,14 @@ export function getTagConcept(tag: string): TagConcept | undefined {
   return derivedByTag.get(tag);
 }
 
-// Every concept shown on /concepts: the full glossary, plus any question-only
-// tag that doesn't (yet) have a formal glossary entry.
+// Every concept shown on /concepts: glossary entries that have at least one
+// active practice question, plus any question-only tag that doesn't (yet)
+// have a formal glossary entry. Glossary terms with zero linked questions are
+// deliberately excluded everywhere (concepts, topics, practice) so users only
+// ever see topics they can actually practice.
 export const tagConcepts: TagConcept[] = [
-  ...glossary.map((entry) => getTagConcept(entry.hashtag)!),
+  ...glossary
+    .map((entry) => getTagConcept(entry.hashtag)!)
+    .filter((concept) => concept.questionIds.length > 0),
   ...Array.from(derivedByTag.values()),
 ].sort((a, b) => a.label.localeCompare(b.label, "he"));
