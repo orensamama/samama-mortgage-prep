@@ -11,6 +11,7 @@ const NAV_LINKS = [
   { href: "/topics", label: "לפי נושאים" },
   { href: "/concepts", label: "מרכז מושגים" },
   { href: "/learn", label: "קורס מקצועי" },
+  { href: "/open-questions", label: "שאלות פתוחות" },
 ];
 
 export default function Navbar() {

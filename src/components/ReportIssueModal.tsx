@@ -1,21 +1,38 @@
 "use client";
 
 import { useState } from "react";
-import { Flag, X } from "lucide-react";
+import { Flag, Mail, X } from "lucide-react";
+
+const REPORT_EMAIL = "orensamama@gmail.com";
 
 export default function ReportIssueModal({
   onClose,
   onSubmit,
+  contextLabel,
 }: {
   onClose: () => void;
   onSubmit: (message: string) => void;
+  /** Short identifier for what's being reported, e.g. "שאלה q42" - used in the email subject/body. */
+  contextLabel?: string;
 }) {
   const [message, setMessage] = useState("");
   const [submitted, setSubmitted] = useState(false);
 
   const handleSubmit = () => {
     if (!message.trim()) return;
-    onSubmit(message.trim());
+    const trimmed = message.trim();
+    onSubmit(trimmed);
+
+    const subject = `דיווח על טעות${contextLabel ? ` - ${contextLabel}` : ""} | Samama Mortgage`;
+    const bodyLines = [
+      contextLabel ? `הקשר: ${contextLabel}` : null,
+      "",
+      "תיאור הדיווח:",
+      trimmed,
+    ].filter((line): line is string => line !== null);
+    const mailtoUrl = `mailto:${REPORT_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(bodyLines.join("\n"))}`;
+    window.location.href = mailtoUrl;
+
     setSubmitted(true);
   };
 
@@ -33,11 +50,17 @@ export default function ReportIssueModal({
       >
         {submitted ? (
           <div className="py-4 text-center">
+            <Mail size={32} className="mx-auto mb-3 text-brand-gold" />
             <p className="text-lg font-bold text-brand-navy">
-              תודה! הדיווח התקבל וייבדק בהקדם
+              תודה! פתחנו עבורכם טיוטת מייל לשליחה
             </p>
             <p className="mt-2 text-sm leading-7 text-brand-navy/70">
-              אנו מעריכים את העזרה בשיפור דיוק התכנים.
+              אם תוכנת המייל לא נפתחה אוטומטית, אפשר לשלוח את הדיווח ישירות ל-
+              <span className="font-semibold text-brand-navy">
+                {" "}
+                {REPORT_EMAIL}
+              </span>
+              . אנו מעריכים את העזרה בשיפור דיוק התכנים.
             </p>
             <button
               type="button"

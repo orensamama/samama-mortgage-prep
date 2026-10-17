@@ -1,7 +1,9 @@
 "use client";
 
-import { X } from "lucide-react";
+import Link from "next/link";
+import { ArrowLeft, X } from "lucide-react";
 import type { TagConcept } from "@/lib/tagConcepts";
+import { getLearnModuleSlugForCategory } from "@/lib/learnModules";
 
 export default function TagConceptModal({
   concept,
@@ -53,13 +55,27 @@ export default function TagConceptModal({
           </div>
         )}
 
-        <button
-          type="button"
-          onClick={() => onPracticeTag(concept.tag)}
-          className="mt-2 w-full rounded-full bg-brand-navy py-3 text-sm font-semibold text-brand-cream transition-colors hover:bg-brand-navy-light"
-        >
-          תרגל שאלות בנושא זה בלבד
-        </button>
+        <div className="mt-2 flex flex-col gap-2">
+          {(() => {
+            const moduleSlug = getLearnModuleSlugForCategory(concept.category);
+            return moduleSlug ? (
+              <Link
+                href={`/learn/${moduleSlug}`}
+                className="flex w-full items-center justify-center gap-1.5 rounded-full border border-brand-gold/40 bg-brand-gold/10 py-3 text-sm font-semibold text-brand-gold transition-colors hover:bg-brand-gold/20"
+              >
+                למד עוד בקורס המקצועי
+                <ArrowLeft size={14} />
+              </Link>
+            ) : null;
+          })()}
+          <button
+            type="button"
+            onClick={() => onPracticeTag(concept.tag)}
+            className="w-full rounded-full bg-brand-navy py-3 text-sm font-semibold text-brand-cream transition-colors hover:bg-brand-navy-light"
+          >
+            תרגל שאלות בנושא זה בלבד
+          </button>
+        </div>
       </div>
     </div>
   );

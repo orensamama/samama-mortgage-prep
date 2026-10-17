@@ -12,16 +12,24 @@ import RegulationModule from "@/components/learn/modules/RegulationModule";
 import PtiLtvModule from "@/components/learn/modules/PtiLtvModule";
 import CapitalAllocationModule from "@/components/learn/modules/CapitalAllocationModule";
 import InterestTracksModule from "@/components/learn/modules/InterestTracksModule";
+import AmortizationModule from "@/components/learn/modules/AmortizationModule";
 import AppraisalModule from "@/components/learn/modules/AppraisalModule";
+import CollateralLegalModule from "@/components/learn/modules/CollateralLegalModule";
 import PrepaymentModule from "@/components/learn/modules/PrepaymentModule";
+import RefinancingModule from "@/components/learn/modules/RefinancingModule";
+import TaxationModule from "@/components/learn/modules/TaxationModule";
 
 const MODULE_COMPONENTS: Record<string, React.ComponentType> = {
   regulation: RegulationModule,
   "pti-ltv": PtiLtvModule,
   "capital-allocation": CapitalAllocationModule,
   "interest-tracks": InterestTracksModule,
+  amortization: AmortizationModule,
   appraisal: AppraisalModule,
+  "collateral-legal": CollateralLegalModule,
   prepayment: PrepaymentModule,
+  refinancing: RefinancingModule,
+  taxation: TaxationModule,
 };
 
 export function generateStaticParams() {

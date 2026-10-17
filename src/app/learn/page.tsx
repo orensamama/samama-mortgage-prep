@@ -3,8 +3,12 @@ import Link from "next/link";
 import {
   Banknote,
   ChevronLeft,
+  Coins,
+  FileText,
+  Layers,
   Percent,
   Receipt,
+  Repeat,
   Ruler,
   Scale,
   TrendingUp,
@@ -22,6 +26,10 @@ const ICONS: Record<LearnModule["icon"], typeof Scale> = {
   "trending-up": TrendingUp,
   ruler: Ruler,
   receipt: Receipt,
+  layers: Layers,
+  "file-text": FileText,
+  coins: Coins,
+  repeat: Repeat,
 };
 
 export default function LearnIndexPage() {

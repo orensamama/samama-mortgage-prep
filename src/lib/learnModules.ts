@@ -10,7 +10,11 @@ export type LearnModule = {
     | "banknote"
     | "trending-up"
     | "ruler"
-    | "receipt";
+    | "receipt"
+    | "layers"
+    | "file-text"
+    | "coins"
+    | "repeat";
 };
 
 export const LEARN_MODULES: LearnModule[] = [
@@ -51,8 +55,17 @@ export const LEARN_MODULES: LearnModule[] = [
     icon: "trending-up",
   },
   {
-    slug: "appraisal",
+    slug: "amortization",
     order: 5,
+    title: "לוחות סילוקין - שפיצר, קרן שווה, גרייס ובלון",
+    shortTitle: "לוחות סילוקין",
+    summary:
+      "ההבדל בין החזר קבוע (שפיצר) להחזר על קרן קבועה, מה קורה בתקופת גרייס חלקי מול גרייס מלא, וריבית דריבית - עם השוואה מספרית מלאה לאותה הלוואה.",
+    icon: "layers",
+  },
+  {
+    slug: "appraisal",
+    order: 6,
     title: "שמאות מקרקעין למשכנתא",
     shortTitle: "שמאות",
     summary:
@@ -60,18 +73,76 @@ export const LEARN_MODULES: LearnModule[] = [
     icon: "ruler",
   },
   {
+    slug: "collateral-legal",
+    order: 7,
+    title: "ביטחונות ורישום משפטי - טאבו, רמ\"י והערות אזהרה",
+    shortTitle: "ביטחונות ורישום",
+    summary:
+      "נסח טאבו מול אישור זכויות מרמ\"י או מחברה משכנת, מה זו הערת אזהרה, ולמה דרגת שעבוד קובעת מי נפרע ראשון במימוש.",
+    icon: "file-text",
+  },
+  {
     slug: "prepayment",
-    order: 6,
-    title: "עמלות פירעון מוקדם ומחזור משכנתא",
+    order: 8,
+    title: "עמלות פירעון מוקדם, תפעול והיוון",
     shortTitle: "פירעון מוקדם",
     summary:
       "חישוב מדויק של עמלת היוון שלב-אחר-שלב, מתי היא לא חלה כלל, ומה ההבדל בינה לבין עמלת התפעול ועמלת אי-ההודעה המוקדמת.",
     icon: "receipt",
   },
+  {
+    slug: "refinancing",
+    order: 9,
+    title: "מחזור משכנתא, גרירה והקפאת תשלומים",
+    shortTitle: "מחזור וגרירה",
+    summary:
+      "ההבדל בין מחזור (הלוואה חדשה) לגרירה (שימור התנאים לנכס חדש) להקפאת תשלומים זמנית - עם מפת החלטה למתי כל פתרון מתאים.",
+    icon: "repeat",
+  },
+  {
+    slug: "taxation",
+    order: 10,
+    title: "מיסוי מקרקעין - מס רכישה, מס שבח והיטל השבחה",
+    shortTitle: "מיסוי מקרקעין",
+    summary:
+      "מדרגות מס הרכישה המלאות לפי מעמד הרוכש, תנאי הפטור ממס שבח לדירה יחידה, והבדל בין מסי המדינה לבין היטל ההשבחה העירוני.",
+    icon: "coins",
+  },
 ];
 
 export function getLearnModule(slug: string): LearnModule | undefined {
   return LEARN_MODULES.find((m) => m.slug === slug);
+}
+
+// Maps each glossary category (see ConceptsExplorer's CATEGORY_ORDER) to the
+// /learn module that covers it in depth, so a concept card can link straight
+// to the relevant course chapter.
+const CATEGORY_TO_MODULE_SLUG: Record<string, string> = {
+  "מושגי יסוד": "regulation",
+  "ריביות ומסלולים": "interest-tracks",
+  "הצמדה ומדדים": "interest-tracks",
+  "שיטות החזר, גרייס ובלון": "amortization",
+  "יחס מימון, יחס החזר ועומס חוב": "pti-ltv",
+  "מטרת ההלוואה וסוגי מימון": "regulation",
+  "תהליך האישור והביצוע": "regulation",
+  שמאות: "appraisal",
+  "טאבו ורישום זכויות": "collateral-legal",
+  "מושע, הסכם שיתוף ופרצלציה": "collateral-legal",
+  "שעבודים ובטוחות": "collateral-legal",
+  "סילוק, מכתב כוונות ופירעון מוקדם": "prepayment",
+  "מחזור וגרירת משכנתא": "refinancing",
+  ביטוחים: "collateral-legal",
+  "אשראי ויכולת החזר": "pti-ltv",
+  "רכישה מקבלן": "regulation",
+  "עלויות ומסים נלווים": "taxation",
+  'רגולציה - הוראה 329 והלוואת מיגון': "regulation",
+};
+
+export function getLearnModuleSlugForCategory(
+  category: string | undefined,
+): string | undefined {
+  if (!category) return undefined;
+  return CATEGORY_TO_MODULE_SLUG[category];
 }
 
 export function getAdjacentModules(slug: string): {

@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { BookOpen, Hash, Lightbulb, Timer } from "lucide-react";
+import { BookOpen, FileSearch, Hash, Lightbulb, Timer } from "lucide-react";
 
 const ACTION_CARDS = [
   {
@@ -33,6 +33,14 @@ const ACTION_CARDS = [
     icon: Lightbulb,
     href: "/concepts",
     cta: "עיינו במושגים",
+  },
+  {
+    title: "מאגר שאלות פתוחות וניתוח אירועים",
+    description:
+      "תרחישים מורכבים ושאלות חישוב - נסו לפתור בעצמכם, ואז חשפו פתרון מלא שלב-אחר-שלב.",
+    icon: FileSearch,
+    href: "/open-questions",
+    cta: "תרגלו שאלות פתוחות",
   },
 ] as const;
 

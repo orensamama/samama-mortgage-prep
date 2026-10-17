@@ -2,8 +2,9 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { ChevronDown, Search, SlidersHorizontal, X } from "lucide-react";
+import { ArrowLeft, ChevronDown, Search, SlidersHorizontal, X } from "lucide-react";
 import { tagConcepts, type TagConcept } from "@/lib/tagConcepts";
+import { getLearnModuleSlugForCategory } from "@/lib/learnModules";
 
 const CATEGORY_ORDER = [
   "מושגי יסוד",
@@ -245,12 +246,26 @@ function ConceptAccordionItem({
               </p>
             </div>
           )}
-          <Link
-            href={`/practice?tag=${encodeURIComponent(concept.tag)}`}
-            className="inline-flex rounded-full bg-brand-navy px-4 py-2 text-sm font-semibold text-brand-cream transition-colors hover:bg-brand-navy-light"
-          >
-            תרגל שאלות בנושא זה
-          </Link>
+          <div className="flex flex-wrap gap-3">
+            {(() => {
+              const moduleSlug = getLearnModuleSlugForCategory(concept.category);
+              return moduleSlug ? (
+                <Link
+                  href={`/learn/${moduleSlug}`}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-brand-gold/40 bg-brand-gold/10 px-4 py-2 text-sm font-semibold text-brand-gold transition-colors hover:bg-brand-gold/20"
+                >
+                  למד עוד בקורס המקצועי
+                  <ArrowLeft size={14} />
+                </Link>
+              ) : null;
+            })()}
+            <Link
+              href={`/practice?tag=${encodeURIComponent(concept.tag)}`}
+              className="inline-flex rounded-full bg-brand-navy px-4 py-2 text-sm font-semibold text-brand-cream transition-colors hover:bg-brand-navy-light"
+            >
+              תרגל שאלות בנושא זה
+            </Link>
+          </div>
         </div>
       )}
     </div>

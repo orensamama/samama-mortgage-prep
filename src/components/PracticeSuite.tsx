@@ -494,6 +494,7 @@ function QuestionCard({
         <ReportIssueModal
           onClose={() => setReportOpen(false)}
           onSubmit={(message) => saveQuestionReport(question.id, message)}
+          contextLabel={`שאלה ${question.id}`}
         />
       )}
     </div>
