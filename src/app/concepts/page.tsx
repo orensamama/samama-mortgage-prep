@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { BookOpen } from "lucide-react";
@@ -19,7 +20,9 @@ export default function ConceptsPage() {
           רוצים ללמוד לעומק? עברו למרכז הידע והקורס המקצועי
         </Link>
       </div>
-      <ConceptsExplorer />
+      <Suspense fallback={null}>
+        <ConceptsExplorer />
+      </Suspense>
     </>
   );
 }

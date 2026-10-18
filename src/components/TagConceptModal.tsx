@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ArrowLeft, X } from "lucide-react";
 import type { TagConcept } from "@/lib/tagConcepts";
 import { getLearnModuleSlugForCategory } from "@/lib/learnModules";
+import WikiText from "@/components/WikiText";
 
 export default function TagConceptModal({
   concept,
@@ -46,12 +47,14 @@ export default function TagConceptModal({
         </div>
 
         <p className="mb-4 text-sm leading-7 text-brand-navy/80">
-          {concept.description}
+          <WikiText text={concept.description} excludeTag={concept.tag} />
         </p>
 
         {concept.note && (
           <div className="mb-6 rounded-xl border border-brand-gold/30 bg-brand-gold/10 p-3">
-            <p className="text-sm leading-7 text-brand-navy/80">{concept.note}</p>
+            <p className="text-sm leading-7 text-brand-navy/80">
+              <WikiText text={concept.note} excludeTag={concept.tag} />
+            </p>
           </div>
         )}
 

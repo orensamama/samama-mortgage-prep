@@ -11,6 +11,7 @@ import {
 import { openQuestions, type Difficulty } from "@/lib/openQuestions";
 import ReportIssueModal from "@/components/ReportIssueModal";
 import SourceBadge from "@/components/SourceBadge";
+import WikiText from "@/components/WikiText";
 
 const REPORTS_STORAGE_KEY = "samama-question-reports";
 
@@ -242,7 +243,7 @@ function QuestionCard({
             </p>
           </div>
           <p className="whitespace-pre-line text-sm leading-7 text-brand-navy/80">
-            {question.solution}
+            <WikiText text={question.solution} />
           </p>
           <button
             type="button"

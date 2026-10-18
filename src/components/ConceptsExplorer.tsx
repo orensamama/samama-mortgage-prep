@@ -1,10 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { ArrowLeft, ChevronDown, Search, SlidersHorizontal, X } from "lucide-react";
 import { tagConcepts, type TagConcept } from "@/lib/tagConcepts";
 import { getLearnModuleSlugForCategory } from "@/lib/learnModules";
+import WikiText from "@/components/WikiText";
 
 const CATEGORY_ORDER = [
   "מושגי יסוד",
@@ -41,10 +43,29 @@ function groupByCategory(concepts: TagConcept[]) {
 }
 
 export default function ConceptsExplorer() {
-  const [query, setQuery] = useState("");
+  const searchParams = useSearchParams();
+  const initialQuery = searchParams.get("q") ?? "";
+
+  const [query, setQuery] = useState(initialQuery);
   const [categoryPanelOpen, setCategoryPanelOpen] = useState(false);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
-  const [expandedTag, setExpandedTag] = useState<string | null>(null);
+  const [expandedTag, setExpandedTag] = useState<string | null>(() => {
+    if (!initialQuery) return null;
+    const exact = tagConcepts.find((c) => c.term === initialQuery);
+    return exact ? exact.tag : null;
+  });
+
+  useEffect(() => {
+    // A deep-link from a wiki-style cross-reference (e.g. "?q=ריבית משתנה")
+    // should land the user on that exact concept, expanded and in view.
+    if (!initialQuery) return;
+    const exact = tagConcepts.find((c) => c.term === initialQuery);
+    if (exact) {
+      const el = document.getElementById(`concept-${exact.tag}`);
+      el?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const byCategory = useMemo(() => groupByCategory(tagConcepts), []);
   const categories = useMemo(
@@ -215,7 +236,10 @@ function ConceptAccordionItem({
   onToggle: () => void;
 }) {
   return (
-    <div className="overflow-hidden rounded-xl border border-brand-navy/10 bg-white shadow-sm">
+    <div
+      id={`concept-${concept.tag}`}
+      className="overflow-hidden rounded-xl border border-brand-navy/10 bg-white shadow-sm scroll-mt-24"
+    >
       <button
         type="button"
         onClick={onToggle}
@@ -237,12 +261,12 @@ function ConceptAccordionItem({
       {isOpen && (
         <div className="border-t border-brand-navy/10 px-5 pb-5 pt-4">
           <p className="mb-3 text-sm leading-7 text-brand-navy/80">
-            {concept.description}
+            <WikiText text={concept.description} excludeTag={concept.tag} />
           </p>
           {concept.note && (
             <div className="mb-4 rounded-lg border border-brand-gold/30 bg-brand-gold/10 p-3">
               <p className="text-sm leading-7 text-brand-navy/80">
-                {concept.note}
+                <WikiText text={concept.note} excludeTag={concept.tag} />
               </p>
             </div>
           )}

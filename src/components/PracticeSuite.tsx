@@ -21,6 +21,7 @@ import { getQuestionsByTag, getTagConcept } from "@/lib/tagConcepts";
 import TagConceptModal from "@/components/TagConceptModal";
 import ReportIssueModal from "@/components/ReportIssueModal";
 import SourceBadge from "@/components/SourceBadge";
+import WikiText from "@/components/WikiText";
 
 const REPORTS_STORAGE_KEY = "samama-question-reports";
 const SHUFFLE_STORAGE_KEY = "samama-shuffle-pref";
@@ -544,7 +545,7 @@ function QuestionCard({
         <div className="mt-6 rounded-xl border border-brand-gold/30 bg-brand-gold/10 p-4">
           <p className="mb-1 text-sm font-bold text-brand-navy">הסבר</p>
           <p className="text-sm leading-7 text-brand-navy/80">
-            {question.explanation}
+            <WikiText text={question.explanation} />
           </p>
 
           <div className="mt-4 border-t border-brand-navy/10 pt-4">
@@ -593,7 +594,7 @@ function QuestionCard({
                 הרחבה מעמיקה
               </p>
               <p className="whitespace-pre-line text-sm leading-7 text-brand-navy/80">
-                {question.detailedExplanation}
+                <WikiText text={question.detailedExplanation} />
               </p>
 
               {question.conceptFaqs.length > 0 && (
