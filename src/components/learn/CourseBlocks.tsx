@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { ArrowDown, BookOpenCheck, Lightbulb, Scale } from "lucide-react";
+import { WikiChildren } from "@/components/WikiText";
 
 export function StepBadge({ n }: { n: number }) {
   return (
@@ -22,7 +23,9 @@ export function LegalBox({
         <Scale size={16} className="shrink-0 text-brand-navy/70" />
         <p className="text-sm font-bold text-brand-navy">{title}</p>
       </div>
-      <div className="text-sm leading-7 text-brand-navy/80">{children}</div>
+      <div className="text-sm leading-7 text-brand-navy/80">
+        <WikiChildren>{children}</WikiChildren>
+      </div>
     </div>
   );
 }
@@ -34,7 +37,9 @@ export function AnalogyBox({ children }: { children: ReactNode }) {
         <Lightbulb size={16} className="shrink-0 text-brand-gold" />
         <p className="text-sm font-bold text-brand-navy">בשפה פשוטה</p>
       </div>
-      <div className="text-sm leading-7 text-brand-navy/80">{children}</div>
+      <div className="text-sm leading-7 text-brand-navy/80">
+        <WikiChildren>{children}</WikiChildren>
+      </div>
     </div>
   );
 }
@@ -72,7 +77,7 @@ export function ExampleStep({
       <div className="flex-1">
         <p className="text-sm font-bold text-brand-navy">{label}</p>
         <div className="mt-1 text-sm leading-7 text-brand-navy/80">
-          {children}
+          <WikiChildren>{children}</WikiChildren>
         </div>
       </div>
     </div>
@@ -203,7 +208,7 @@ export function BranchFlow({
 export function NoteCallout({ children }: { children: ReactNode }) {
   return (
     <div className="mb-6 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm leading-7 text-amber-900">
-      {children}
+      <WikiChildren>{children}</WikiChildren>
     </div>
   );
 }
@@ -211,7 +216,7 @@ export function NoteCallout({ children }: { children: ReactNode }) {
 export function Prose({ children }: { children: ReactNode }) {
   return (
     <div className="mb-6 flex flex-col gap-3 text-sm leading-7 text-brand-navy/80">
-      {children}
+      <WikiChildren>{children}</WikiChildren>
     </div>
   );
 }

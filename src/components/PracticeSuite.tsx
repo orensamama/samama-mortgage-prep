@@ -394,25 +394,23 @@ export default function PracticeSuite() {
         onOpenTag={(tag) => setModalTag(tag)}
       />
 
-      {selectedAnswer !== null && (
-        <div className="mt-6 flex gap-3">
-          <button
-            type="button"
-            onClick={handlePrevious}
-            disabled={currentIndex === 0}
-            className="flex-1 rounded-full border border-brand-navy/20 py-3 text-base font-semibold text-brand-navy transition-colors hover:border-brand-gold hover:text-brand-gold disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            שאלה קודמת
-          </button>
-          <button
-            type="button"
-            onClick={handleNext}
-            className="flex-1 rounded-full bg-brand-navy py-3 text-base font-semibold text-brand-cream transition-colors hover:bg-brand-navy-light"
-          >
-            {isLastQuestion ? "סיום וצפייה בתוצאות" : "השאלה הבאה"}
-          </button>
-        </div>
-      )}
+      <div className="mt-6 flex gap-3">
+        <button
+          type="button"
+          onClick={handlePrevious}
+          disabled={currentIndex === 0}
+          className="flex-1 rounded-full border border-brand-navy/20 py-3 text-base font-semibold text-brand-navy transition-colors hover:border-brand-gold hover:text-brand-gold disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          שאלה קודמת
+        </button>
+        <button
+          type="button"
+          onClick={handleNext}
+          className="flex-1 rounded-full bg-brand-navy py-3 text-base font-semibold text-brand-cream transition-colors hover:bg-brand-navy-light"
+        >
+          {isLastQuestion ? "סיום וצפייה בתוצאות" : "השאלה הבאה"}
+        </button>
+      </div>
 
       {modalConcept && (
         <TagConceptModal
@@ -478,6 +476,9 @@ function QuestionCard({
     <div className="relative rounded-2xl border border-brand-navy/10 bg-white p-6 shadow-sm sm:p-8">
       <SourceBadge source={question.source} />
       <div className="mb-5 flex flex-wrap items-center gap-2">
+        <span className="rounded-full border border-brand-gold/40 bg-brand-navy px-3 py-1 text-xs font-bold text-brand-gold">
+          #{question.id.replace(/^q/, "")}
+        </span>
         <span className="rounded-full border border-brand-navy/15 bg-brand-navy/5 px-3 py-1 text-xs font-semibold text-brand-navy">
           {question.category}
         </span>

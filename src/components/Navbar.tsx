@@ -9,7 +9,7 @@ const NAV_LINKS = [
   { href: "/", label: "בית" },
   { href: "/practice", label: "תרגול שאלות" },
   { href: "/topics", label: "לפי נושאים" },
-  { href: "/concepts", label: "מרכז מושגים" },
+  { href: "/concepts", label: "מילון משכנתאות" },
   { href: "/learn", label: "קורס מקצועי" },
   { href: "/open-questions", label: "שאלות פתוחות" },
 ];

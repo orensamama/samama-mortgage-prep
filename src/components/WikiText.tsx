@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { Children, cloneElement, isValidElement, useEffect, useRef, useState, type ReactElement, type ReactNode } from "react";
 import Link from "next/link";
 import { ArrowLeft, X } from "lucide-react";
 import { splitWikiSegments } from "@/lib/wikiLink";
@@ -39,6 +39,47 @@ export default function WikiText({
       )}
     </span>
   );
+}
+
+/**
+ * Like WikiText, but for JSX children instead of a plain string - walks the
+ * tree (course prose mixes <strong>, bare text, and {" "} spacers) and
+ * wikifies every text node it finds, leaving the surrounding markup intact.
+ * Used to retrofit the /learn course without rewriting each module's JSX.
+ */
+export function WikiChildren({
+  children,
+  excludeTag,
+}: {
+  children: ReactNode;
+  excludeTag?: string;
+}) {
+  return <>{wikifyNode(children, excludeTag)}</>;
+}
+
+function wikifyNode(node: ReactNode, excludeTag: string | undefined, keyPrefix = ""): ReactNode {
+  if (typeof node === "string") {
+    const segments = splitWikiSegments(node, excludeTag);
+    if (segments.every((s) => s.type === "text")) return node;
+    return segments.map((seg, i) =>
+      seg.type === "text" ? (
+        <span key={`${keyPrefix}t${i}`}>{seg.value}</span>
+      ) : (
+        <WikiTerm key={`${keyPrefix}w${i}`} concept={seg.concept} label={seg.value} />
+      ),
+    );
+  }
+  if (Array.isArray(node) || (node && typeof node === "object" && Symbol.iterator in Object(node))) {
+    return Children.map(node as ReactNode, (child, i) => wikifyNode(child, excludeTag, `${keyPrefix}${i}-`));
+  }
+  if (isValidElement(node)) {
+    // Never descend into interactive elements - avoids nested-button markup.
+    if (node.type === "button" || node.type === "a") return node;
+    const props = node.props as { children?: ReactNode };
+    if (props.children == null) return node;
+    return cloneElement(node as ReactElement<{ children?: ReactNode }>, undefined, wikifyNode(props.children, excludeTag, `${keyPrefix}c-`));
+  }
+  return node;
 }
 
 function WikiTerm({ concept, label }: { concept: TagConcept; label: string }) {

@@ -96,7 +96,7 @@ export default function ConceptsExplorer() {
   return (
     <div className="mx-auto w-full max-w-4xl px-6 py-14">
       <h1 className="mb-2 text-2xl font-bold text-brand-navy sm:text-3xl">
-        מרכז מושגים והרחבות רגולטוריות
+        מילון משכנתאות
       </h1>
       <p className="mb-8 text-brand-navy/70">
         מילון מרוכז של {tagConcepts.length} מושגי מפתח פעילים בעולם המשכנתאות -

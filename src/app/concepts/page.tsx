@@ -5,7 +5,7 @@ import { BookOpen } from "lucide-react";
 import ConceptsExplorer from "@/components/ConceptsExplorer";
 
 export const metadata: Metadata = {
-  title: "מרכז מושגים | Samama Mortgage",
+  title: "מילון משכנתאות | Samama Mortgage",
 };
 
 export default function ConceptsPage() {

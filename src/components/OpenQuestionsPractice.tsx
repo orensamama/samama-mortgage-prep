@@ -196,6 +196,9 @@ function QuestionCard({
     <div className="relative rounded-2xl border border-brand-navy/10 bg-white p-6 shadow-sm sm:p-8">
       <SourceBadge source={question.source} />
       <div className="mb-5 flex flex-wrap items-center gap-2">
+        <span className="rounded-full border border-brand-gold/40 bg-brand-navy px-3 py-1 text-xs font-bold text-brand-gold">
+          #{question.id.replace(/^oq/, "")}
+        </span>
         <span className="rounded-full border border-brand-navy/15 bg-brand-navy/5 px-3 py-1 text-xs font-semibold text-brand-navy">
           {question.category}
         </span>
