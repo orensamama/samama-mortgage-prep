@@ -3,13 +3,16 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import {
+  AlertCircle,
   CheckCircle2,
   ChevronDown,
   Flag,
+  HelpCircle,
   LayoutGrid,
   Lightbulb,
   RotateCcw,
   Shuffle,
+  ThumbsUp,
   X,
   XCircle,
 } from "lucide-react";
@@ -20,6 +23,8 @@ import ReportIssueModal from "@/components/ReportIssueModal";
 
 const REPORTS_STORAGE_KEY = "samama-question-reports";
 const SHUFFLE_STORAGE_KEY = "samama-shuffle-pref";
+
+type ConfidenceLevel = "confident" | "unsure" | "unknown";
 
 function shuffleArray<T>(items: T[]): T[] {
   const result = [...items];
@@ -65,11 +70,6 @@ export default function PracticeSuite() {
   const initialTag = searchParams.get("tag");
 
   const [activeTag, setActiveTag] = useState<string | null>(initialTag);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [answers, setAnswers] = useState<(number | null)[]>([]);
-  const [finished, setFinished] = useState(false);
-  const [modalTag, setModalTag] = useState<string | null>(null);
-  const [gridOpen, setGridOpen] = useState(false);
   const [shuffleEnabled, setShuffleEnabled] = useState(false);
   const [shuffleSeed, setShuffleSeed] = useState(0);
 
@@ -88,31 +88,50 @@ export default function PracticeSuite() {
     }
   }, []);
 
+  // The base set of questions for the active filter. When a tag is selected
+  // but it matches no questions, this is an empty array - the UI shows a
+  // dedicated "no questions" message instead of silently falling back to the
+  // full bank (a prior bug: filtering by topic could show all 210 questions).
   const basePool = useMemo(() => {
     if (!activeTag) return questions;
-    const filtered = getQuestionsByTag(activeTag);
-    return filtered.length > 0 ? filtered : questions;
+    return getQuestionsByTag(activeTag);
   }, [activeTag]);
 
-  const pool = useMemo(() => {
+  const orderedPool = useMemo(() => {
     return shuffleEnabled ? shuffleArray(basePool) : basePool;
     // shuffleSeed is a trigger to re-shuffle on toggle/mount; its value itself is unused
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [basePool, shuffleEnabled, shuffleSeed]);
 
-  const total = pool.length;
-  const current = pool[currentIndex];
+  // The live session queue - starts as a copy of orderedPool, but questions
+  // marked "לא יודע" are appended to the end so they resurface later in the
+  // same session. Entirely in-memory: a refresh or a new practice session
+  // (tag change, shuffle toggle, restart) resets it from orderedPool.
+  const [queue, setQueue] = useState<Question[]>(orderedPool);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [answers, setAnswers] = useState<(number | null)[]>(
+    Array(orderedPool.length).fill(null),
+  );
+  const [confidence, setConfidence] = useState<(ConfidenceLevel | null)[]>(
+    Array(orderedPool.length).fill(null),
+  );
+  const [finished, setFinished] = useState(false);
+  const [modalTag, setModalTag] = useState<string | null>(null);
+  const [gridOpen, setGridOpen] = useState(false);
+
+  const total = queue.length;
+  const current: Question | undefined = queue[currentIndex];
   const isLastQuestion = currentIndex === total - 1;
   const activeTagLabel = activeTag ? formatTagLabel(activeTag) : null;
   const selectedAnswer = answers[currentIndex] ?? null;
-  const score = answers.filter(
-    (answer, i) => answer !== null && answer === pool[i]?.correctAnswer,
-  ).length;
+  const currentConfidence = confidence[currentIndex] ?? null;
   const answeredCount = answers.filter((a) => a !== null).length;
 
-  const resetProgress = () => {
+  const resetProgress = (nextPool: Question[]) => {
+    setQueue(nextPool);
     setCurrentIndex(0);
-    setAnswers(Array(pool.length).fill(null));
+    setAnswers(Array(nextPool.length).fill(null));
+    setConfidence(Array(nextPool.length).fill(null));
     setFinished(false);
     setGridOpen(false);
   };
@@ -124,6 +143,19 @@ export default function PracticeSuite() {
       next[currentIndex] = optionIndex;
       return next;
     });
+  };
+
+  const handleMarkConfidence = (level: ConfidenceLevel) => {
+    setConfidence((prev) => {
+      const next = prev.length === total ? [...prev] : Array(total).fill(null);
+      next[currentIndex] = level;
+      return next;
+    });
+    if (level === "unknown" && current) {
+      setQueue((prev) => [...prev, current]);
+      setAnswers((prev) => [...prev, null]);
+      setConfidence((prev) => [...prev, null]);
+    }
   };
 
   const goTo = (index: number) => {
@@ -144,18 +176,16 @@ export default function PracticeSuite() {
   };
 
   const handleRestart = () => {
-    resetProgress();
+    resetProgress(orderedPool);
   };
 
   const handleClearFilter = () => {
     setActiveTag(null);
-    resetProgress();
   };
 
   const handlePracticeTag = (tag: string) => {
     setActiveTag(tag);
     setModalTag(null);
-    resetProgress();
   };
 
   const handleToggleShuffle = () => {
@@ -169,19 +199,62 @@ export default function PracticeSuite() {
       return next;
     });
     setShuffleSeed((prev) => prev + 1);
-    resetProgress();
   };
+
+  // A new topic filter, shuffle toggle, or re-shuffle produces a new
+  // orderedPool identity - start a fresh session queue from it so no answer,
+  // confidence mark, or requeue leaks from the previous filter/session.
+  useEffect(() => {
+    // Resetting the session queue to sync with a new filter/shuffle selection
+    // is an intentional external-trigger sync, not derived render state.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    resetProgress(orderedPool);
+  }, [orderedPool]);
 
   const modalConcept = modalTag ? getTagConcept(modalTag) : undefined;
 
+  if (basePool.length === 0) {
+    return (
+      <div className="mx-auto w-full max-w-xl rounded-2xl border border-brand-navy/10 bg-white p-10 text-center shadow-sm">
+        <p className="text-lg font-semibold text-brand-navy">
+          לא נמצאו שאלות בנושא &quot;{activeTagLabel}&quot;
+        </p>
+        <p className="mt-3 text-sm text-brand-navy/60">
+          ייתכן שטרם נוספו שאלות תרגול לנושא זה. נסו לבחור נושא אחר או לחזור
+          למאגר המלא.
+        </p>
+        <button
+          type="button"
+          onClick={handleClearFilter}
+          className="mt-8 inline-flex items-center gap-2 rounded-full bg-brand-navy px-8 py-3 text-base font-semibold text-brand-cream transition-colors hover:bg-brand-navy-light"
+        >
+          <X size={18} />
+          חזרה למאגר המלא
+        </button>
+      </div>
+    );
+  }
+
   if (finished) {
-    const percentage = Math.round((score / total) * 100);
+    // Score on the latest attempt per unique question only - a question
+    // retried after "לא יודע" counts once, by its most recent answer.
+    const latestById = new Map<string, { question: Question; answer: number | null }>();
+    queue.forEach((q, i) => {
+      latestById.set(q.id, { question: q, answer: answers[i] ?? null });
+    });
+    const uniqueResults = [...latestById.values()];
+    const score = uniqueResults.filter(
+      (r) => r.answer !== null && r.answer === r.question.correctAnswer,
+    ).length;
+    const uniqueTotal = uniqueResults.length;
+    const percentage = uniqueTotal > 0 ? Math.round((score / uniqueTotal) * 100) : 0;
+
     return (
       <div className="mx-auto w-full max-w-xl rounded-2xl border border-brand-navy/10 bg-white p-10 text-center shadow-sm">
         <p className="text-sm font-semibold text-brand-gold">סיימתם את התרגול</p>
         <p className="mt-4 text-6xl font-bold text-brand-navy">{percentage}%</p>
         <p className="mt-3 text-lg text-brand-navy/70">
-          {score} תשובות נכונות מתוך {total}
+          {score} תשובות נכונות מתוך {uniqueTotal}
         </p>
         <button
           type="button"
@@ -194,6 +267,8 @@ export default function PracticeSuite() {
       </div>
     );
   }
+
+  if (!current) return null;
 
   return (
     <div className="mx-auto w-full max-w-xl">
@@ -257,17 +332,32 @@ export default function PracticeSuite() {
 
         {gridOpen && (
           <div className="mt-3 rounded-2xl border border-brand-navy/10 bg-white p-4 shadow-sm">
-            <div className="mb-2 flex items-center justify-between text-xs text-brand-navy/60">
+            <div className="mb-3 flex flex-wrap items-center gap-3 text-xs text-brand-navy/60">
               <span>{answeredCount} מתוך {total} נענו</span>
-              <span>{score} תשובות נכונות עד כה</span>
+              <span className="flex items-center gap-1">
+                <span className="h-2.5 w-2.5 rounded-full bg-emerald-400" /> סגור על זה
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="h-2.5 w-2.5 rounded-full bg-amber-400" /> לא סגור
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="h-2.5 w-2.5 rounded-full bg-rose-400" /> לא יודע
+              </span>
             </div>
             <div className="grid grid-cols-8 gap-2 sm:grid-cols-10">
-              {pool.map((q, i) => {
+              {queue.map((q, i) => {
                 const answer = answers[i] ?? null;
+                const level = confidence[i] ?? null;
                 const isCurrent = i === currentIndex;
                 let cellClass =
                   "border-brand-navy/15 bg-brand-cream text-brand-navy/60 hover:border-brand-gold";
-                if (answer !== null) {
+                if (level === "confident") {
+                  cellClass = "border-emerald-400 bg-emerald-50 text-emerald-700";
+                } else if (level === "unsure") {
+                  cellClass = "border-amber-400 bg-amber-50 text-amber-700";
+                } else if (level === "unknown") {
+                  cellClass = "border-rose-400 bg-rose-50 text-rose-700";
+                } else if (answer !== null) {
                   cellClass =
                     answer === q.correctAnswer
                       ? "border-emerald-400 bg-emerald-50 text-emerald-700"
@@ -275,7 +365,7 @@ export default function PracticeSuite() {
                 }
                 return (
                   <button
-                    key={q.id}
+                    key={`${q.id}-${i}`}
                     type="button"
                     onClick={() => goTo(i)}
                     aria-current={isCurrent}
@@ -293,10 +383,12 @@ export default function PracticeSuite() {
       </div>
 
       <QuestionCard
-        key={current.id}
+        key={`${current.id}-${currentIndex}`}
         question={current}
         selectedAnswer={selectedAnswer}
+        confidence={currentConfidence}
         onSelect={handleSelect}
+        onMarkConfidence={handleMarkConfidence}
         onOpenTag={(tag) => setModalTag(tag)}
       />
 
@@ -331,15 +423,49 @@ export default function PracticeSuite() {
   );
 }
 
+const CONFIDENCE_BUTTONS: {
+  level: ConfidenceLevel;
+  label: string;
+  icon: typeof ThumbsUp;
+  activeClass: string;
+  idleClass: string;
+}[] = [
+  {
+    level: "confident",
+    label: "בטוח בתשובה / סגור על זה",
+    icon: ThumbsUp,
+    activeClass: "border-emerald-400 bg-emerald-50 text-emerald-700",
+    idleClass: "border-brand-navy/15 bg-white text-brand-navy/70 hover:border-emerald-400 hover:text-emerald-700",
+  },
+  {
+    level: "unsure",
+    label: "לא סגור / להתלבטות",
+    icon: HelpCircle,
+    activeClass: "border-amber-400 bg-amber-50 text-amber-700",
+    idleClass: "border-brand-navy/15 bg-white text-brand-navy/70 hover:border-amber-400 hover:text-amber-700",
+  },
+  {
+    level: "unknown",
+    label: "לא מכיר את החומר / לא יודע",
+    icon: AlertCircle,
+    activeClass: "border-rose-400 bg-rose-50 text-rose-700",
+    idleClass: "border-brand-navy/15 bg-white text-brand-navy/70 hover:border-rose-400 hover:text-rose-700",
+  },
+];
+
 function QuestionCard({
   question,
   selectedAnswer,
+  confidence,
   onSelect,
+  onMarkConfidence,
   onOpenTag,
 }: {
   question: Question;
   selectedAnswer: number | null;
+  confidence: ConfidenceLevel | null;
   onSelect: (index: number) => void;
+  onMarkConfidence: (level: ConfidenceLevel) => void;
   onOpenTag: (tag: string) => void;
 }) {
   const [showDetailed, setShowDetailed] = useState(false);
@@ -418,6 +544,36 @@ function QuestionCard({
           <p className="text-sm leading-7 text-brand-navy/80">
             {question.explanation}
           </p>
+
+          <div className="mt-4 border-t border-brand-navy/10 pt-4">
+            <p className="mb-2 text-xs font-semibold text-brand-navy/60">
+              עד כמה הרגשתם בטוחים בתשובה שלכם?
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {CONFIDENCE_BUTTONS.map(({ level, label, icon: Icon, activeClass, idleClass }) => {
+                const isActive = confidence === level;
+                return (
+                  <button
+                    key={level}
+                    type="button"
+                    onClick={() => onMarkConfidence(level)}
+                    aria-pressed={isActive}
+                    className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
+                      isActive ? activeClass : idleClass
+                    }`}
+                  >
+                    <Icon size={14} className="shrink-0" />
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+            {confidence === "unknown" && (
+              <p className="mt-2 text-xs text-brand-navy/50">
+                השאלה הוזזה לסוף התור ותוצג לכם שוב בהמשך התרגול הנוכחי.
+              </p>
+            )}
+          </div>
 
           <button
             type="button"
