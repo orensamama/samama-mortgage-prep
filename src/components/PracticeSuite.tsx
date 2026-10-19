@@ -151,6 +151,7 @@ export default function PracticeSuite() {
     unsure: true,
     none: true,
   });
+  const [searchQuery, setSearchQuery] = useState("");
 
   const total = queue.length;
   const current: Question | undefined = queue[currentIndex];
@@ -311,7 +312,28 @@ export default function PracticeSuite() {
       .sort((a, b) => b.total - a.total);
   }, [queue, status]);
 
-  const visibleQueueCount = queue.filter((_, i) => statusFilter[status[i] ?? "none"]).length;
+  // Free-text search over a question's id, category, tags, and body - lets the
+  // user jump straight to a concept/keyword/#ID instead of scanning the grid.
+  const normalizedSearch = searchQuery.trim().toLowerCase();
+  const matchesSearch = (q: Question) => {
+    if (!normalizedSearch) return true;
+    const shortId = q.id.replace(/^o?q/, "");
+    const haystack = [
+      q.id,
+      `#${shortId}`,
+      shortId,
+      q.category,
+      q.question,
+      ...(q.tags ?? []),
+    ]
+      .join(" ")
+      .toLowerCase();
+    return haystack.includes(normalizedSearch);
+  };
+
+  const visibleQueueCount = queue.filter(
+    (q, i) => statusFilter[status[i] ?? "none"] && matchesSearch(q),
+  ).length;
 
   const modalConcept = modalTag ? getTagConcept(modalTag) : undefined;
 
@@ -461,6 +483,13 @@ export default function PracticeSuite() {
 
             {filterMenuOpen && (
               <div className="rounded-xl border border-brand-navy/10 bg-brand-cream/40 p-3">
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="חפש מושג, מילת מפתח או #ID..."
+                  className="mb-3 w-full rounded-full border border-brand-navy/15 bg-white px-4 py-2 text-sm text-brand-navy placeholder:text-brand-navy/40 focus:border-brand-gold focus:outline-none"
+                />
                 <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                   <p className="text-xs font-bold text-brand-navy">סינון מפת השאלות</p>
                   <div className="flex items-center gap-2 text-xs font-semibold">
@@ -501,13 +530,15 @@ export default function PracticeSuite() {
 
             {visibleQueueCount === 0 ? (
               <p className="rounded-xl border border-dashed border-brand-navy/15 p-4 text-center text-sm text-brand-navy/50">
-                לא נבחרו קטגוריות סינון - סמנו לפחות ריבוע אחד כדי להציג שאלות.
+                {normalizedSearch
+                  ? `לא נמצאו שאלות התואמות את החיפוש "${searchQuery.trim()}".`
+                  : "לא נבחרו קטגוריות סינון - סמנו לפחות ריבוע אחד כדי להציג שאלות."}
               </p>
             ) : (
               <div className="grid grid-cols-6 gap-2.5 sm:grid-cols-8">
                 {queue.map((q, i) => {
                   const bucket: StatusBucket = status[i] ?? "none";
-                  if (!statusFilter[bucket]) return null;
+                  if (!statusFilter[bucket] || !matchesSearch(q)) return null;
                   return (
                     <QuestionMapCell
                       key={`${q.id}-${i}`}
