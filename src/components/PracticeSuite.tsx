@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import {
-  AlertCircle,
+  ArrowUpRight,
   CheckCircle2,
   ChevronDown,
   Flag,
@@ -12,7 +12,6 @@ import {
   Lightbulb,
   RotateCcw,
   Shuffle,
-  ThumbsUp,
   X,
   XCircle,
 } from "lucide-react";
@@ -26,7 +25,17 @@ import WikiText from "@/components/WikiText";
 const REPORTS_STORAGE_KEY = "samama-question-reports";
 const SHUFFLE_STORAGE_KEY = "samama-shuffle-pref";
 
-type ConfidenceLevel = "confident" | "unsure" | "unknown";
+type QuestionStatus = "correct" | "wrong" | "unsure";
+type StatusBucket = QuestionStatus | "none";
+
+const STATUS_CYCLE: (QuestionStatus | null)[] = ["correct", "wrong", "unsure", null];
+
+const FILTER_OPTIONS: { key: StatusBucket; label: string }[] = [
+  { key: "correct", label: "שאלות שנלמדו / נכונות (✓)" },
+  { key: "wrong", label: "שאלות עם טעויות (✗)" },
+  { key: "unsure", label: "שאלות בסימן שאלה (?)" },
+  { key: "none", label: "שאלות שטרם נענו" },
+];
 
 function shuffleArray<T>(items: T[]): T[] {
   const result = [...items];
@@ -114,50 +123,68 @@ export default function PracticeSuite() {
   const [answers, setAnswers] = useState<(number | null)[]>(
     Array(orderedPool.length).fill(null),
   );
-  const [confidence, setConfidence] = useState<(ConfidenceLevel | null)[]>(
+  const [status, setStatus] = useState<(QuestionStatus | null)[]>(
     Array(orderedPool.length).fill(null),
   );
   const [finished, setFinished] = useState(false);
   const [modalTag, setModalTag] = useState<string | null>(null);
   const [gridOpen, setGridOpen] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<Record<StatusBucket, boolean>>({
+    correct: true,
+    wrong: true,
+    unsure: true,
+    none: true,
+  });
 
   const total = queue.length;
   const current: Question | undefined = queue[currentIndex];
   const isLastQuestion = currentIndex === total - 1;
   const activeTagLabel = activeTag ? formatTagLabel(activeTag) : null;
   const selectedAnswer = answers[currentIndex] ?? null;
-  const currentConfidence = confidence[currentIndex] ?? null;
-  const answeredCount = answers.filter((a) => a !== null).length;
+  const currentStatus = status[currentIndex] ?? null;
 
   const resetProgress = (nextPool: Question[], options?: { keepGridOpen?: boolean }) => {
     setQueue(nextPool);
     setCurrentIndex(0);
     setAnswers(Array(nextPool.length).fill(null));
-    setConfidence(Array(nextPool.length).fill(null));
+    setStatus(Array(nextPool.length).fill(null));
     setFinished(false);
     if (!options?.keepGridOpen) setGridOpen(false);
   };
 
   const handleSelect = (optionIndex: number) => {
-    if (selectedAnswer !== null) return;
+    if (selectedAnswer !== null || !current) return;
     setAnswers((prev) => {
       const next = prev.length === total ? [...prev] : Array(total).fill(null);
       next[currentIndex] = optionIndex;
       return next;
     });
-  };
-
-  const handleMarkConfidence = (level: ConfidenceLevel) => {
-    setConfidence((prev) => {
+    setStatus((prev) => {
       const next = prev.length === total ? [...prev] : Array(total).fill(null);
-      next[currentIndex] = level;
+      next[currentIndex] = optionIndex === current.correctAnswer ? "correct" : "wrong";
       return next;
     });
-    if (level === "unknown" && current) {
-      setQueue((prev) => [...prev, current]);
-      setAnswers((prev) => [...prev, null]);
-      setConfidence((prev) => [...prev, null]);
-    }
+  };
+
+  // Manual override from the question card - sets (or, clicked again, clears)
+  // this question's status directly, independent of whether it was answered.
+  const handleToggleStatus = (level: QuestionStatus) => {
+    setStatus((prev) => {
+      const next = prev.length === total ? [...prev] : Array(total).fill(null);
+      next[currentIndex] = next[currentIndex] === level ? null : level;
+      return next;
+    });
+  };
+
+  // Question-map cell click - cycles ✓ -> ✗ -> ? -> neutral, regardless of
+  // whether the underlying question was actually answered.
+  const handleCycleStatus = (index: number) => {
+    setStatus((prev) => {
+      const next = prev.length === total ? [...prev] : Array(total).fill(null);
+      const pos = STATUS_CYCLE.indexOf(next[index] ?? null);
+      next[index] = STATUS_CYCLE[(pos + 1) % STATUS_CYCLE.length];
+      return next;
+    });
   };
 
   const goTo = (index: number) => {
@@ -185,17 +212,16 @@ export default function PracticeSuite() {
     resetProgress(orderedPool, { keepGridOpen: true });
   };
 
-  const handleResetQuestion = (index: number) => {
-    setAnswers((prev) => {
-      const next = [...prev];
-      next[index] = null;
-      return next;
-    });
-    setConfidence((prev) => {
-      const next = [...prev];
-      next[index] = null;
-      return next;
-    });
+  const toggleStatusFilter = (key: StatusBucket) => {
+    setStatusFilter((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const handleSelectAllFilters = () => {
+    setStatusFilter({ correct: true, wrong: true, unsure: true, none: true });
+  };
+
+  const handleClearAllFilters = () => {
+    setStatusFilter({ correct: false, wrong: false, unsure: false, none: false });
   };
 
   const handleClearFilter = () => {
@@ -229,6 +255,40 @@ export default function PracticeSuite() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     resetProgress(orderedPool);
   }, [orderedPool]);
+
+  // Overall status tally across the current queue - drives both the stats
+  // dashboard tiles and the "none"/unanswered filter bucket.
+  const statusCounts = useMemo(() => {
+    const counts: Record<StatusBucket, number> = { correct: 0, wrong: 0, unsure: 0, none: 0 };
+    for (let i = 0; i < queue.length; i++) {
+      const bucket: StatusBucket = status[i] ?? "none";
+      counts[bucket] += 1;
+    }
+    return counts;
+  }, [queue, status]);
+
+  // Per-category success rate, counted only among questions graded ✓/✗
+  // (an "unsure" or unanswered mark doesn't yet count toward a verdict).
+  const categoryStats = useMemo(() => {
+    const map = new Map<string, { correct: number; wrong: number }>();
+    queue.forEach((q, i) => {
+      const bucket = status[i];
+      if (bucket !== "correct" && bucket !== "wrong") return;
+      const entry = map.get(q.category) ?? { correct: 0, wrong: 0 };
+      if (bucket === "correct") entry.correct += 1;
+      else entry.wrong += 1;
+      map.set(q.category, entry);
+    });
+    return [...map.entries()]
+      .map(([name, { correct, wrong }]) => ({
+        name,
+        total: correct + wrong,
+        pct: Math.round((correct / (correct + wrong)) * 100),
+      }))
+      .sort((a, b) => b.total - a.total);
+  }, [queue, status]);
+
+  const visibleQueueCount = queue.filter((_, i) => statusFilter[status[i] ?? "none"]).length;
 
   const modalConcept = modalTag ? getTagConcept(modalTag) : undefined;
 
@@ -353,96 +413,173 @@ export default function PracticeSuite() {
         </div>
 
         {gridOpen && (
-          <div className="mt-3 rounded-2xl border border-brand-navy/10 bg-white p-4 shadow-sm">
-            <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-              <div className="flex flex-wrap items-center gap-3 text-xs text-brand-navy/60">
-                <span>{answeredCount} מתוך {total} נענו</span>
-                <span className="flex items-center gap-1">
-                  <span className="h-2.5 w-2.5 rounded-full bg-emerald-400" /> סגור על זה
-                </span>
-                <span className="flex items-center gap-1">
-                  <span className="h-2.5 w-2.5 rounded-full bg-amber-400" /> לא סגור
-                </span>
-                <span className="flex items-center gap-1">
-                  <span className="h-2.5 w-2.5 rounded-full bg-rose-400" /> לא יודע
-                </span>
+          <div className="mt-3 flex flex-col gap-4 rounded-2xl border border-brand-navy/10 bg-white p-4 shadow-sm">
+            <div>
+              <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                <p className="text-sm font-bold text-brand-navy">סטטיסטיקת תרגול</p>
+                <button
+                  type="button"
+                  onClick={handleResetBoard}
+                  className="flex items-center gap-1.5 rounded-full border border-rose-300 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-700 transition-colors hover:border-rose-400 hover:bg-rose-100"
+                >
+                  <RotateCcw size={13} />
+                  אפס סטטיסטיקה / התחל סבב חדש
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={handleResetBoard}
-                className="flex items-center gap-1.5 rounded-full border border-brand-navy/15 bg-white px-3 py-1 text-xs font-semibold text-brand-navy/70 transition-colors hover:border-rose-400 hover:text-rose-600"
-              >
-                <RotateCcw size={13} />
-                איפוס לוח
-              </button>
+
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                {(
+                  [
+                    { key: "correct", label: "נכונות", dotClass: "bg-emerald-400", textClass: "text-emerald-700" },
+                    { key: "wrong", label: "טעויות", dotClass: "bg-rose-400", textClass: "text-rose-700" },
+                    { key: "unsure", label: "סימן שאלה", dotClass: "bg-amber-400", textClass: "text-amber-700" },
+                    { key: "none", label: "טרם נענו", dotClass: "bg-brand-navy/30", textClass: "text-brand-navy/60" },
+                  ] as const
+                ).map(({ key, label, dotClass, textClass }) => {
+                  const count = statusCounts[key];
+                  const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+                  return (
+                    <div key={key} className="rounded-xl border border-brand-navy/10 bg-brand-cream/50 p-2.5 text-center">
+                      <span className={`mx-auto mb-1 flex h-2 w-2 rounded-full ${dotClass}`} />
+                      <p className={`text-lg font-bold leading-none ${textClass}`}>{count}</p>
+                      <p className="mt-1 text-[11px] text-brand-navy/60">{label} ({pct}%)</p>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {categoryStats.length > 0 && (
+                <div className="mt-3 max-h-40 overflow-y-auto rounded-xl border border-brand-navy/10 p-2.5">
+                  <p className="mb-1.5 text-xs font-semibold text-brand-navy/60">
+                    הצלחה לפי קטגוריה (מתוך שאלות שסומנו ✓/✗)
+                  </p>
+                  <div className="flex flex-col gap-1.5">
+                    {categoryStats.map((cat) => (
+                      <div key={cat.name} className="flex items-center gap-2 text-xs">
+                        <span className="w-28 shrink-0 truncate text-brand-navy/70" title={cat.name}>
+                          {cat.name}
+                        </span>
+                        <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-brand-navy/10">
+                          <div
+                            className="h-full rounded-full bg-brand-gold"
+                            style={{ width: `${cat.pct}%` }}
+                          />
+                        </div>
+                        <span className="w-9 shrink-0 text-end font-semibold text-brand-navy/70">
+                          {cat.pct}%
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
-            <div className="grid grid-cols-6 gap-2.5 sm:grid-cols-8">
-              {queue.map((q, i) => {
-                const answer = answers[i] ?? null;
-                const level = confidence[i] ?? null;
-                const isCurrent = i === currentIndex;
-                const isAnswered = answer !== null;
-                const isCorrect = isAnswered && answer === q.correctAnswer;
-                let cellClass =
-                  "border-brand-navy/15 bg-brand-cream text-brand-navy/60 hover:border-brand-gold";
-                if (level === "confident") {
-                  cellClass = "border-emerald-400 bg-emerald-50 text-emerald-700";
-                } else if (level === "unsure") {
-                  cellClass = "border-amber-400 bg-amber-50 text-amber-700";
-                } else if (level === "unknown") {
-                  cellClass = "border-rose-400 bg-rose-50 text-rose-700";
-                } else if (isAnswered) {
-                  cellClass = isCorrect
-                    ? "border-emerald-400 bg-emerald-50 text-emerald-700"
-                    : "border-rose-400 bg-rose-50 text-rose-700";
-                }
-                return (
-                  <div key={`${q.id}-${i}`} className="relative">
-                    <button
-                      type="button"
-                      onClick={() => goTo(i)}
-                      aria-current={isCurrent}
-                      title={`שאלה ${i + 1} מתוך ${total} (#${q.id.replace(/^q/, "")})`}
-                      className={`flex h-12 w-12 flex-col items-center justify-center gap-0.5 rounded-lg border text-xs font-bold leading-none transition-colors ${cellClass} ${
-                        isCurrent ? "ring-2 ring-brand-gold ring-offset-1" : ""
-                      }`}
-                    >
-                      <span>{i + 1}</span>
-                      <span className="text-[9px] font-normal opacity-60">
-                        #{q.id.replace(/^q/, "")}
-                      </span>
-                    </button>
-                    {isAnswered && (
-                      <>
+
+            <div>
+              <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                <p className="text-sm font-bold text-brand-navy">סינון מפת השאלות</p>
+                <div className="flex items-center gap-2 text-xs font-semibold">
+                  <button
+                    type="button"
+                    onClick={handleSelectAllFilters}
+                    className="rounded-full border border-brand-navy/15 px-2.5 py-1 text-brand-navy/70 hover:border-brand-gold hover:text-brand-gold"
+                  >
+                    בחר הכל
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleClearAllFilters}
+                    className="rounded-full border border-brand-navy/15 px-2.5 py-1 text-brand-navy/70 hover:border-brand-gold hover:text-brand-gold"
+                  >
+                    בטל הכל
+                  </button>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-x-4 gap-y-2">
+                {FILTER_OPTIONS.map(({ key, label }) => (
+                  <label
+                    key={key}
+                    className="flex cursor-pointer items-center gap-1.5 text-xs font-medium text-brand-navy/70"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={statusFilter[key]}
+                      onChange={() => toggleStatusFilter(key)}
+                      className="h-3.5 w-3.5 rounded border-brand-navy/30"
+                    />
+                    {label}
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {visibleQueueCount === 0 ? (
+              <p className="rounded-xl border border-dashed border-brand-navy/15 p-4 text-center text-sm text-brand-navy/50">
+                לא נבחרו קטגוריות סינון - סמנו לפחות ריבוע אחד כדי להציג שאלות.
+              </p>
+            ) : (
+              <div className="grid grid-cols-6 gap-2.5 sm:grid-cols-8">
+                {queue.map((q, i) => {
+                  const bucket: StatusBucket = status[i] ?? "none";
+                  if (!statusFilter[bucket]) return null;
+                  const isCurrent = i === currentIndex;
+                  let cellClass =
+                    "border-brand-navy/15 bg-brand-cream text-brand-navy/60 hover:border-brand-gold";
+                  if (bucket === "correct") {
+                    cellClass = "border-emerald-400 bg-emerald-50 text-emerald-700";
+                  } else if (bucket === "wrong") {
+                    cellClass = "border-rose-400 bg-rose-50 text-rose-700";
+                  } else if (bucket === "unsure") {
+                    cellClass = "border-amber-400 bg-amber-50 text-amber-700";
+                  }
+                  return (
+                    <div key={`${q.id}-${i}`} className="relative">
+                      <button
+                        type="button"
+                        onClick={() => handleCycleStatus(i)}
+                        aria-current={isCurrent}
+                        title={`שאלה ${i + 1} מתוך ${total} (#${q.id.replace(/^q/, "")}) - לחיצה מחליפה סטטוס`}
+                        className={`flex h-12 w-12 flex-col items-center justify-center gap-0.5 rounded-lg border text-xs font-bold leading-none transition-colors ${cellClass} ${
+                          isCurrent ? "ring-2 ring-brand-gold ring-offset-1" : ""
+                        }`}
+                      >
+                        <span>{i + 1}</span>
+                        <span className="text-[9px] font-normal opacity-60">
+                          #{q.id.replace(/^q/, "")}
+                        </span>
+                      </button>
+                      {bucket !== "none" && (
                         <span
                           className={`pointer-events-none absolute -top-1.5 -start-1.5 flex h-4 w-4 items-center justify-center rounded-full border border-white text-white ${
-                            isCorrect ? "bg-emerald-500" : "bg-rose-500"
+                            bucket === "correct"
+                              ? "bg-emerald-500"
+                              : bucket === "wrong"
+                                ? "bg-rose-500"
+                                : "bg-amber-500"
                           }`}
                         >
-                          {isCorrect ? (
-                            <CheckCircle2 size={11} strokeWidth={3} />
-                          ) : (
-                            <XCircle size={11} strokeWidth={3} />
-                          )}
+                          {bucket === "correct" && <CheckCircle2 size={11} strokeWidth={3} />}
+                          {bucket === "wrong" && <XCircle size={11} strokeWidth={3} />}
+                          {bucket === "unsure" && <HelpCircle size={11} strokeWidth={3} />}
                         </span>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleResetQuestion(i);
-                          }}
-                          aria-label={`אפס את שאלה ${i + 1}`}
-                          title="אפס שאלה זו"
-                          className="absolute -bottom-1.5 -end-1.5 flex h-4 w-4 items-center justify-center rounded-full border border-white bg-brand-navy/60 text-white transition-colors hover:bg-rose-600"
-                        >
-                          <X size={9} strokeWidth={3} />
-                        </button>
-                      </>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+                      )}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          goTo(i);
+                        }}
+                        aria-label={`עבור לשאלה ${i + 1}`}
+                        title="עבור לשאלה זו"
+                        className="absolute -bottom-1.5 -end-1.5 flex h-4 w-4 items-center justify-center rounded-full border border-white bg-brand-navy/60 text-white transition-colors hover:bg-brand-gold"
+                      >
+                        <ArrowUpRight size={9} strokeWidth={3} />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -451,9 +588,9 @@ export default function PracticeSuite() {
         key={`${current.id}-${currentIndex}`}
         question={current}
         selectedAnswer={selectedAnswer}
-        confidence={currentConfidence}
+        status={currentStatus}
         onSelect={handleSelect}
-        onMarkConfidence={handleMarkConfidence}
+        onToggleStatus={handleToggleStatus}
         onOpenTag={(tag) => setModalTag(tag)}
       />
 
@@ -486,49 +623,49 @@ export default function PracticeSuite() {
   );
 }
 
-const CONFIDENCE_BUTTONS: {
-  level: ConfidenceLevel;
+const STATUS_BUTTONS: {
+  level: QuestionStatus;
   label: string;
-  icon: typeof ThumbsUp;
+  icon: typeof CheckCircle2;
   activeClass: string;
   idleClass: string;
 }[] = [
   {
-    level: "confident",
-    label: "בטוח בתשובה / סגור על זה",
-    icon: ThumbsUp,
+    level: "correct",
+    label: "סמן כנכון / נלמד",
+    icon: CheckCircle2,
     activeClass: "border-emerald-400 bg-emerald-50 text-emerald-700",
-    idleClass: "border-brand-navy/15 bg-white text-brand-navy/70 hover:border-emerald-400 hover:text-emerald-700",
+    idleClass: "border-brand-navy/15 bg-white text-brand-navy/40 hover:border-emerald-400 hover:text-emerald-600",
+  },
+  {
+    level: "wrong",
+    label: "סמן כטעות",
+    icon: XCircle,
+    activeClass: "border-rose-400 bg-rose-50 text-rose-700",
+    idleClass: "border-brand-navy/15 bg-white text-brand-navy/40 hover:border-rose-400 hover:text-rose-600",
   },
   {
     level: "unsure",
-    label: "לא סגור / להתלבטות",
+    label: "סמן בסימן שאלה / לא בטוח",
     icon: HelpCircle,
     activeClass: "border-amber-400 bg-amber-50 text-amber-700",
-    idleClass: "border-brand-navy/15 bg-white text-brand-navy/70 hover:border-amber-400 hover:text-amber-700",
-  },
-  {
-    level: "unknown",
-    label: "לא מכיר את החומר / לא יודע",
-    icon: AlertCircle,
-    activeClass: "border-rose-400 bg-rose-50 text-rose-700",
-    idleClass: "border-brand-navy/15 bg-white text-brand-navy/70 hover:border-rose-400 hover:text-rose-700",
+    idleClass: "border-brand-navy/15 bg-white text-brand-navy/40 hover:border-amber-400 hover:text-amber-600",
   },
 ];
 
 function QuestionCard({
   question,
   selectedAnswer,
-  confidence,
+  status,
   onSelect,
-  onMarkConfidence,
+  onToggleStatus,
   onOpenTag,
 }: {
   question: Question;
   selectedAnswer: number | null;
-  confidence: ConfidenceLevel | null;
+  status: QuestionStatus | null;
   onSelect: (index: number) => void;
-  onMarkConfidence: (level: ConfidenceLevel) => void;
+  onToggleStatus: (level: QuestionStatus) => void;
   onOpenTag: (tag: string) => void;
 }) {
   const [showDetailed, setShowDetailed] = useState(false);
@@ -549,6 +686,26 @@ function QuestionCard({
           className={`rounded-full border px-3 py-1 text-xs font-semibold ${DIFFICULTY_CLASS[question.difficulty]}`}
         >
           {DIFFICULTY_LABEL[question.difficulty]}
+        </span>
+        <span className="ms-auto flex items-center gap-1.5">
+          {STATUS_BUTTONS.map(({ level, label, icon: Icon, activeClass, idleClass }) => {
+            const isActive = status === level;
+            return (
+              <button
+                key={level}
+                type="button"
+                onClick={() => onToggleStatus(level)}
+                aria-pressed={isActive}
+                title={label}
+                aria-label={label}
+                className={`flex h-7 w-7 items-center justify-center rounded-full border transition-colors ${
+                  isActive ? activeClass : idleClass
+                }`}
+              >
+                <Icon size={14} />
+              </button>
+            );
+          })}
         </span>
       </div>
 
@@ -611,36 +768,6 @@ function QuestionCard({
           <p className="text-sm leading-7 text-brand-navy/80">
             <WikiText text={question.explanation} />
           </p>
-
-          <div className="mt-4 border-t border-brand-navy/10 pt-4">
-            <p className="mb-2 text-xs font-semibold text-brand-navy/60">
-              עד כמה הרגשתם בטוחים בתשובה שלכם?
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {CONFIDENCE_BUTTONS.map(({ level, label, icon: Icon, activeClass, idleClass }) => {
-                const isActive = confidence === level;
-                return (
-                  <button
-                    key={level}
-                    type="button"
-                    onClick={() => onMarkConfidence(level)}
-                    aria-pressed={isActive}
-                    className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
-                      isActive ? activeClass : idleClass
-                    }`}
-                  >
-                    <Icon size={14} className="shrink-0" />
-                    {label}
-                  </button>
-                );
-              })}
-            </div>
-            {confidence === "unknown" && (
-              <p className="mt-2 text-xs text-brand-navy/50">
-                השאלה הוזזה לסוף התור ותוצג לכם שוב בהמשך התרגול הנוכחי.
-              </p>
-            )}
-          </div>
 
           <button
             type="button"
