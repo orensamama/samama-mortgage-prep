@@ -1,9 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import {
-  ArrowUpRight,
   CheckCircle2,
   ChevronDown,
   Flag,
@@ -36,6 +35,20 @@ const FILTER_OPTIONS: { key: StatusBucket; label: string }[] = [
   { key: "unsure", label: "שאלות בסימן שאלה (?)" },
   { key: "none", label: "שאלות שטרם נענו" },
 ];
+
+const STATUS_TILES: {
+  key: StatusBucket;
+  label: string;
+  dotClass: string;
+  textClass: string;
+}[] = [
+  { key: "correct", label: "נכונות", dotClass: "bg-emerald-400", textClass: "text-emerald-700" },
+  { key: "wrong", label: "טעויות", dotClass: "bg-rose-400", textClass: "text-rose-700" },
+  { key: "unsure", label: "סימן שאלה", dotClass: "bg-amber-400", textClass: "text-amber-700" },
+  { key: "none", label: "טרם נענו", dotClass: "bg-brand-navy/30", textClass: "text-brand-navy/60" },
+];
+
+const LONG_PRESS_MS = 500;
 
 function shuffleArray<T>(items: T[]): T[] {
   const result = [...items];
@@ -129,6 +142,9 @@ export default function PracticeSuite() {
   const [finished, setFinished] = useState(false);
   const [modalTag, setModalTag] = useState<string | null>(null);
   const [gridOpen, setGridOpen] = useState(false);
+  const [statsModalOpen, setStatsModalOpen] = useState(false);
+  const [filterMenuOpen, setFilterMenuOpen] = useState(false);
+  const mapSectionRef = useRef<HTMLDivElement>(null);
   const [statusFilter, setStatusFilter] = useState<Record<StatusBucket, boolean>>({
     correct: true,
     wrong: true,
@@ -190,6 +206,13 @@ export default function PracticeSuite() {
   const goTo = (index: number) => {
     setCurrentIndex(Math.max(0, Math.min(total - 1, index)));
     setGridOpen(false);
+  };
+
+  // Lets the question card jump straight back to the map view, scrolling it
+  // into sight in case the reader has scrolled down past it.
+  const handleOpenMap = () => {
+    setGridOpen(true);
+    mapSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
   const handleNext = () => {
@@ -383,7 +406,7 @@ export default function PracticeSuite() {
         </div>
       )}
 
-      <div className="mb-6">
+      <div ref={mapSectionRef} className="mb-6 scroll-mt-4">
         <div className="mb-2 flex items-center justify-between text-sm font-medium text-brand-navy/70">
           <span>
             שאלה {currentIndex + 1} מתוך {total}{" "}
@@ -413,105 +436,68 @@ export default function PracticeSuite() {
         </div>
 
         {gridOpen && (
-          <div className="mt-3 flex flex-col gap-4 rounded-2xl border border-brand-navy/10 bg-white p-4 shadow-sm">
-            <div>
-              <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                <p className="text-sm font-bold text-brand-navy">סטטיסטיקת תרגול</p>
-                <button
-                  type="button"
-                  onClick={handleResetBoard}
-                  className="flex items-center gap-1.5 rounded-full border border-rose-300 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-700 transition-colors hover:border-rose-400 hover:bg-rose-100"
-                >
-                  <RotateCcw size={13} />
-                  אפס סטטיסטיקה / התחל סבב חדש
-                </button>
-              </div>
+          <div className="mt-3 flex flex-col gap-3 rounded-2xl border border-brand-navy/10 bg-white p-4 shadow-sm">
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => setStatsModalOpen(true)}
+                className="flex items-center gap-1.5 rounded-full border border-brand-navy/15 bg-white px-3 py-1.5 text-xs font-semibold text-brand-navy hover:border-brand-gold hover:text-brand-gold"
+              >
+                📊 סטטיסטיקה
+              </button>
+              <button
+                type="button"
+                onClick={() => setFilterMenuOpen((prev) => !prev)}
+                aria-expanded={filterMenuOpen}
+                className="flex items-center gap-1.5 rounded-full border border-brand-navy/15 bg-white px-3 py-1.5 text-xs font-semibold text-brand-navy hover:border-brand-gold hover:text-brand-gold"
+              >
+                🔍 סינון שאלות
+                <ChevronDown
+                  size={14}
+                  className={`transition-transform ${filterMenuOpen ? "rotate-180" : ""}`}
+                />
+              </button>
+            </div>
 
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                {(
-                  [
-                    { key: "correct", label: "נכונות", dotClass: "bg-emerald-400", textClass: "text-emerald-700" },
-                    { key: "wrong", label: "טעויות", dotClass: "bg-rose-400", textClass: "text-rose-700" },
-                    { key: "unsure", label: "סימן שאלה", dotClass: "bg-amber-400", textClass: "text-amber-700" },
-                    { key: "none", label: "טרם נענו", dotClass: "bg-brand-navy/30", textClass: "text-brand-navy/60" },
-                  ] as const
-                ).map(({ key, label, dotClass, textClass }) => {
-                  const count = statusCounts[key];
-                  const pct = total > 0 ? Math.round((count / total) * 100) : 0;
-                  return (
-                    <div key={key} className="rounded-xl border border-brand-navy/10 bg-brand-cream/50 p-2.5 text-center">
-                      <span className={`mx-auto mb-1 flex h-2 w-2 rounded-full ${dotClass}`} />
-                      <p className={`text-lg font-bold leading-none ${textClass}`}>{count}</p>
-                      <p className="mt-1 text-[11px] text-brand-navy/60">{label} ({pct}%)</p>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {categoryStats.length > 0 && (
-                <div className="mt-3 max-h-40 overflow-y-auto rounded-xl border border-brand-navy/10 p-2.5">
-                  <p className="mb-1.5 text-xs font-semibold text-brand-navy/60">
-                    הצלחה לפי קטגוריה (מתוך שאלות שסומנו ✓/✗)
-                  </p>
-                  <div className="flex flex-col gap-1.5">
-                    {categoryStats.map((cat) => (
-                      <div key={cat.name} className="flex items-center gap-2 text-xs">
-                        <span className="w-28 shrink-0 truncate text-brand-navy/70" title={cat.name}>
-                          {cat.name}
-                        </span>
-                        <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-brand-navy/10">
-                          <div
-                            className="h-full rounded-full bg-brand-gold"
-                            style={{ width: `${cat.pct}%` }}
-                          />
-                        </div>
-                        <span className="w-9 shrink-0 text-end font-semibold text-brand-navy/70">
-                          {cat.pct}%
-                        </span>
-                      </div>
-                    ))}
+            {filterMenuOpen && (
+              <div className="rounded-xl border border-brand-navy/10 bg-brand-cream/40 p-3">
+                <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-xs font-bold text-brand-navy">סינון מפת השאלות</p>
+                  <div className="flex items-center gap-2 text-xs font-semibold">
+                    <button
+                      type="button"
+                      onClick={handleSelectAllFilters}
+                      className="rounded-full border border-brand-navy/15 bg-white px-2.5 py-1 text-brand-navy/70 hover:border-brand-gold hover:text-brand-gold"
+                    >
+                      בחר הכל
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleClearAllFilters}
+                      className="rounded-full border border-brand-navy/15 bg-white px-2.5 py-1 text-brand-navy/70 hover:border-brand-gold hover:text-brand-gold"
+                    >
+                      בטל הכל
+                    </button>
                   </div>
                 </div>
-              )}
-            </div>
-
-            <div>
-              <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                <p className="text-sm font-bold text-brand-navy">סינון מפת השאלות</p>
-                <div className="flex items-center gap-2 text-xs font-semibold">
-                  <button
-                    type="button"
-                    onClick={handleSelectAllFilters}
-                    className="rounded-full border border-brand-navy/15 px-2.5 py-1 text-brand-navy/70 hover:border-brand-gold hover:text-brand-gold"
-                  >
-                    בחר הכל
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleClearAllFilters}
-                    className="rounded-full border border-brand-navy/15 px-2.5 py-1 text-brand-navy/70 hover:border-brand-gold hover:text-brand-gold"
-                  >
-                    בטל הכל
-                  </button>
+                <div className="flex flex-wrap gap-x-4 gap-y-2">
+                  {FILTER_OPTIONS.map(({ key, label }) => (
+                    <label
+                      key={key}
+                      className="flex cursor-pointer items-center gap-1.5 text-xs font-medium text-brand-navy/70"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={statusFilter[key]}
+                        onChange={() => toggleStatusFilter(key)}
+                        className="h-3.5 w-3.5 rounded border-brand-navy/30"
+                      />
+                      {label}
+                    </label>
+                  ))}
                 </div>
               </div>
-              <div className="flex flex-wrap gap-x-4 gap-y-2">
-                {FILTER_OPTIONS.map(({ key, label }) => (
-                  <label
-                    key={key}
-                    className="flex cursor-pointer items-center gap-1.5 text-xs font-medium text-brand-navy/70"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={statusFilter[key]}
-                      onChange={() => toggleStatusFilter(key)}
-                      className="h-3.5 w-3.5 rounded border-brand-navy/30"
-                    />
-                    {label}
-                  </label>
-                ))}
-              </div>
-            </div>
+            )}
 
             {visibleQueueCount === 0 ? (
               <p className="rounded-xl border border-dashed border-brand-navy/15 p-4 text-center text-sm text-brand-navy/50">
@@ -522,60 +508,17 @@ export default function PracticeSuite() {
                 {queue.map((q, i) => {
                   const bucket: StatusBucket = status[i] ?? "none";
                   if (!statusFilter[bucket]) return null;
-                  const isCurrent = i === currentIndex;
-                  let cellClass =
-                    "border-brand-navy/15 bg-brand-cream text-brand-navy/60 hover:border-brand-gold";
-                  if (bucket === "correct") {
-                    cellClass = "border-emerald-400 bg-emerald-50 text-emerald-700";
-                  } else if (bucket === "wrong") {
-                    cellClass = "border-rose-400 bg-rose-50 text-rose-700";
-                  } else if (bucket === "unsure") {
-                    cellClass = "border-amber-400 bg-amber-50 text-amber-700";
-                  }
                   return (
-                    <div key={`${q.id}-${i}`} className="relative">
-                      <button
-                        type="button"
-                        onClick={() => handleCycleStatus(i)}
-                        aria-current={isCurrent}
-                        title={`שאלה ${i + 1} מתוך ${total} (#${q.id.replace(/^q/, "")}) - לחיצה מחליפה סטטוס`}
-                        className={`flex h-12 w-12 flex-col items-center justify-center gap-0.5 rounded-lg border text-xs font-bold leading-none transition-colors ${cellClass} ${
-                          isCurrent ? "ring-2 ring-brand-gold ring-offset-1" : ""
-                        }`}
-                      >
-                        <span>{i + 1}</span>
-                        <span className="text-[9px] font-normal opacity-60">
-                          #{q.id.replace(/^q/, "")}
-                        </span>
-                      </button>
-                      {bucket !== "none" && (
-                        <span
-                          className={`pointer-events-none absolute -top-1.5 -start-1.5 flex h-4 w-4 items-center justify-center rounded-full border border-white text-white ${
-                            bucket === "correct"
-                              ? "bg-emerald-500"
-                              : bucket === "wrong"
-                                ? "bg-rose-500"
-                                : "bg-amber-500"
-                          }`}
-                        >
-                          {bucket === "correct" && <CheckCircle2 size={11} strokeWidth={3} />}
-                          {bucket === "wrong" && <XCircle size={11} strokeWidth={3} />}
-                          {bucket === "unsure" && <HelpCircle size={11} strokeWidth={3} />}
-                        </span>
-                      )}
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          goTo(i);
-                        }}
-                        aria-label={`עבור לשאלה ${i + 1}`}
-                        title="עבור לשאלה זו"
-                        className="absolute -bottom-1.5 -end-1.5 flex h-4 w-4 items-center justify-center rounded-full border border-white bg-brand-navy/60 text-white transition-colors hover:bg-brand-gold"
-                      >
-                        <ArrowUpRight size={9} strokeWidth={3} />
-                      </button>
-                    </div>
+                    <QuestionMapCell
+                      key={`${q.id}-${i}`}
+                      index={i}
+                      total={total}
+                      questionId={q.id}
+                      bucket={bucket}
+                      isCurrent={i === currentIndex}
+                      onShortPress={() => goTo(i)}
+                      onLongPress={() => handleCycleStatus(i)}
+                    />
                   );
                 })}
               </div>
@@ -583,6 +526,19 @@ export default function PracticeSuite() {
           </div>
         )}
       </div>
+
+      {statsModalOpen && (
+        <StatsModal
+          statusCounts={statusCounts}
+          total={total}
+          categoryStats={categoryStats}
+          onReset={() => {
+            handleResetBoard();
+            setStatsModalOpen(false);
+          }}
+          onClose={() => setStatsModalOpen(false)}
+        />
+      )}
 
       <QuestionCard
         key={`${current.id}-${currentIndex}`}
@@ -592,6 +548,7 @@ export default function PracticeSuite() {
         onSelect={handleSelect}
         onToggleStatus={handleToggleStatus}
         onOpenTag={(tag) => setModalTag(tag)}
+        onOpenMap={handleOpenMap}
       />
 
       <div className="mt-6 flex gap-3">
@@ -660,6 +617,7 @@ function QuestionCard({
   onSelect,
   onToggleStatus,
   onOpenTag,
+  onOpenMap,
 }: {
   question: Question;
   selectedAnswer: number | null;
@@ -667,6 +625,7 @@ function QuestionCard({
   onSelect: (index: number) => void;
   onToggleStatus: (level: QuestionStatus) => void;
   onOpenTag: (tag: string) => void;
+  onOpenMap: () => void;
 }) {
   const [showDetailed, setShowDetailed] = useState(false);
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
@@ -675,19 +634,15 @@ function QuestionCard({
   return (
     <div className="relative rounded-2xl border border-brand-navy/10 bg-white p-6 shadow-sm sm:p-8">
       <SourceBadge source={question.source} />
-      <div className="mb-5 flex flex-wrap items-center gap-2">
-        <span className="rounded-full border border-brand-gold/40 bg-brand-navy px-3 py-1 text-xs font-bold text-brand-gold">
-          #{question.id.replace(/^q/, "")}
-        </span>
-        <span className="rounded-full border border-brand-navy/15 bg-brand-navy/5 px-3 py-1 text-xs font-semibold text-brand-navy">
-          {question.category}
-        </span>
-        <span
-          className={`rounded-full border px-3 py-1 text-xs font-semibold ${DIFFICULTY_CLASS[question.difficulty]}`}
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <button
+          type="button"
+          onClick={onOpenMap}
+          className="flex items-center gap-1.5 rounded-full border border-brand-gold/40 bg-brand-gold/10 px-3 py-1.5 text-xs font-bold text-brand-navy transition-colors hover:bg-brand-gold/20"
         >
-          {DIFFICULTY_LABEL[question.difficulty]}
-        </span>
-        <span className="ms-auto flex items-center gap-1.5">
+          🗺️ מפת שאלות
+        </button>
+        <span className="flex items-center gap-1.5">
           {STATUS_BUTTONS.map(({ level, label, icon: Icon, activeClass, idleClass }) => {
             const isActive = status === level;
             return (
@@ -706,6 +661,19 @@ function QuestionCard({
               </button>
             );
           })}
+        </span>
+      </div>
+      <div className="mb-5 flex flex-wrap items-center gap-2">
+        <span className="rounded-full border border-brand-gold/40 bg-brand-navy px-3 py-1 text-xs font-bold text-brand-gold">
+          #{question.id.replace(/^q/, "")}
+        </span>
+        <span className="rounded-full border border-brand-navy/15 bg-brand-navy/5 px-3 py-1 text-xs font-semibold text-brand-navy">
+          {question.category}
+        </span>
+        <span
+          className={`rounded-full border px-3 py-1 text-xs font-semibold ${DIFFICULTY_CLASS[question.difficulty]}`}
+        >
+          {DIFFICULTY_LABEL[question.difficulty]}
         </span>
       </div>
 
@@ -847,6 +815,190 @@ function QuestionCard({
           contextLabel={`שאלה ${question.id}`}
         />
       )}
+    </div>
+  );
+}
+
+const CELL_CLASS: Record<StatusBucket, string> = {
+  correct: "border-emerald-400 bg-emerald-50 text-emerald-700",
+  wrong: "border-rose-400 bg-rose-50 text-rose-700",
+  unsure: "border-amber-400 bg-amber-50 text-amber-700",
+  none: "border-brand-navy/15 bg-brand-cream text-brand-navy/60 hover:border-brand-gold",
+};
+
+// A grid cell with two distinct gestures on the same element: a short tap
+// opens the question immediately, while holding for LONG_PRESS_MS cycles the
+// status badge without navigating. The long-press timer lives per-cell (a
+// ref), and a "suppress" flag swallows the click event that still follows a
+// completed long-press release, so a single release never fires both.
+function QuestionMapCell({
+  index,
+  total,
+  questionId,
+  bucket,
+  isCurrent,
+  onShortPress,
+  onLongPress,
+}: {
+  index: number;
+  total: number;
+  questionId: string;
+  bucket: StatusBucket;
+  isCurrent: boolean;
+  onShortPress: () => void;
+  onLongPress: () => void;
+}) {
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const suppressClickRef = useRef(false);
+
+  const clearTimer = () => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+  };
+
+  const handlePointerDown = () => {
+    clearTimer();
+    timerRef.current = setTimeout(() => {
+      suppressClickRef.current = true;
+      onLongPress();
+    }, LONG_PRESS_MS);
+  };
+
+  const handlePointerUp = () => {
+    clearTimer();
+  };
+
+  const handleClick = () => {
+    if (suppressClickRef.current) {
+      suppressClickRef.current = false;
+      return;
+    }
+    onShortPress();
+  };
+
+  const shortId = questionId.replace(/^q/, "");
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onPointerDown={handlePointerDown}
+        onPointerUp={handlePointerUp}
+        onPointerLeave={clearTimer}
+        onPointerCancel={clearTimer}
+        onContextMenu={(e) => e.preventDefault()}
+        onClick={handleClick}
+        aria-current={isCurrent}
+        title={`שאלה ${index + 1} מתוך ${total} (#${shortId}) - לחיצה קצרה פותחת, לחיצה ארוכה מחליפה סטטוס`}
+        className={`flex h-12 w-12 flex-col items-center justify-center gap-0.5 rounded-lg border text-xs font-bold leading-none transition-colors ${CELL_CLASS[bucket]} ${
+          isCurrent ? "ring-2 ring-brand-gold ring-offset-1" : ""
+        }`}
+      >
+        <span>{index + 1}</span>
+        <span className="text-[9px] font-normal opacity-60">#{shortId}</span>
+      </button>
+      {bucket !== "none" && (
+        <span
+          className={`pointer-events-none absolute -top-1.5 -start-1.5 flex h-4 w-4 items-center justify-center rounded-full border border-white text-white ${
+            bucket === "correct" ? "bg-emerald-500" : bucket === "wrong" ? "bg-rose-500" : "bg-amber-500"
+          }`}
+        >
+          {bucket === "correct" && <CheckCircle2 size={11} strokeWidth={3} />}
+          {bucket === "wrong" && <XCircle size={11} strokeWidth={3} />}
+          {bucket === "unsure" && <HelpCircle size={11} strokeWidth={3} />}
+        </span>
+      )}
+    </div>
+  );
+}
+
+function StatsModal({
+  statusCounts,
+  total,
+  categoryStats,
+  onReset,
+  onClose,
+}: {
+  statusCounts: Record<StatusBucket, number>;
+  total: number;
+  categoryStats: { name: string; total: number; pct: number }[];
+  onReset: () => void;
+  onClose: () => void;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-brand-navy/50 p-4"
+      onClick={onClose}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="סטטיסטיקת תרגול"
+        onClick={(e) => e.stopPropagation()}
+        className="max-h-[85vh] w-full max-w-md overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl"
+      >
+        <div className="mb-4 flex items-start justify-between gap-3">
+          <h3 className="text-lg font-bold text-brand-navy">📊 סטטיסטיקת תרגול</h3>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="סגור"
+            className="rounded-full p-1 text-brand-navy/60 hover:bg-brand-navy/5 hover:text-brand-navy"
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {STATUS_TILES.map(({ key, label, dotClass, textClass }) => {
+            const count = statusCounts[key];
+            const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+            return (
+              <div key={key} className="rounded-xl border border-brand-navy/10 bg-brand-cream/50 p-2.5 text-center">
+                <span className={`mx-auto mb-1 flex h-2 w-2 rounded-full ${dotClass}`} />
+                <p className={`text-lg font-bold leading-none ${textClass}`}>{count}</p>
+                <p className="mt-1 text-[11px] text-brand-navy/60">
+                  {label} ({pct}%)
+                </p>
+              </div>
+            );
+          })}
+        </div>
+
+        {categoryStats.length > 0 && (
+          <div className="mt-4 max-h-56 overflow-y-auto rounded-xl border border-brand-navy/10 p-2.5">
+            <p className="mb-1.5 text-xs font-semibold text-brand-navy/60">
+              הצלחה לפי קטגוריה (מתוך שאלות שסומנו ✓/✗)
+            </p>
+            <div className="flex flex-col gap-1.5">
+              {categoryStats.map((cat) => (
+                <div key={cat.name} className="flex items-center gap-2 text-xs">
+                  <span className="w-28 shrink-0 truncate text-brand-navy/70" title={cat.name}>
+                    {cat.name}
+                  </span>
+                  <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-brand-navy/10">
+                    <div className="h-full rounded-full bg-brand-gold" style={{ width: `${cat.pct}%` }} />
+                  </div>
+                  <span className="w-9 shrink-0 text-end font-semibold text-brand-navy/70">
+                    {cat.pct}%
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <button
+          type="button"
+          onClick={onReset}
+          className="mt-5 flex w-full items-center justify-center gap-1.5 rounded-full border border-rose-300 bg-rose-50 py-3 text-sm font-semibold text-rose-700 transition-colors hover:border-rose-400 hover:bg-rose-100"
+        >
+          <RotateCcw size={15} />
+          אפס סטטיסטיקה / התחל סבב חדש
+        </button>
+      </div>
     </div>
   );
 }
