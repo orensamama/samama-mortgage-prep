@@ -129,13 +129,13 @@ export default function PracticeSuite() {
   const currentConfidence = confidence[currentIndex] ?? null;
   const answeredCount = answers.filter((a) => a !== null).length;
 
-  const resetProgress = (nextPool: Question[]) => {
+  const resetProgress = (nextPool: Question[], options?: { keepGridOpen?: boolean }) => {
     setQueue(nextPool);
     setCurrentIndex(0);
     setAnswers(Array(nextPool.length).fill(null));
     setConfidence(Array(nextPool.length).fill(null));
     setFinished(false);
-    setGridOpen(false);
+    if (!options?.keepGridOpen) setGridOpen(false);
   };
 
   const handleSelect = (optionIndex: number) => {
@@ -179,6 +179,23 @@ export default function PracticeSuite() {
 
   const handleRestart = () => {
     resetProgress(orderedPool);
+  };
+
+  const handleResetBoard = () => {
+    resetProgress(orderedPool, { keepGridOpen: true });
+  };
+
+  const handleResetQuestion = (index: number) => {
+    setAnswers((prev) => {
+      const next = [...prev];
+      next[index] = null;
+      return next;
+    });
+    setConfidence((prev) => {
+      const next = [...prev];
+      next[index] = null;
+      return next;
+    });
   };
 
   const handleClearFilter = () => {
@@ -309,7 +326,10 @@ export default function PracticeSuite() {
       <div className="mb-6">
         <div className="mb-2 flex items-center justify-between text-sm font-medium text-brand-navy/70">
           <span>
-            שאלה {currentIndex + 1} מתוך {total}
+            שאלה {currentIndex + 1} מתוך {total}{" "}
+            <span className="text-brand-navy/40">
+              (#{current.id.replace(/^q/, "")})
+            </span>
           </span>
           <button
             type="button"
@@ -334,23 +354,35 @@ export default function PracticeSuite() {
 
         {gridOpen && (
           <div className="mt-3 rounded-2xl border border-brand-navy/10 bg-white p-4 shadow-sm">
-            <div className="mb-3 flex flex-wrap items-center gap-3 text-xs text-brand-navy/60">
-              <span>{answeredCount} מתוך {total} נענו</span>
-              <span className="flex items-center gap-1">
-                <span className="h-2.5 w-2.5 rounded-full bg-emerald-400" /> סגור על זה
-              </span>
-              <span className="flex items-center gap-1">
-                <span className="h-2.5 w-2.5 rounded-full bg-amber-400" /> לא סגור
-              </span>
-              <span className="flex items-center gap-1">
-                <span className="h-2.5 w-2.5 rounded-full bg-rose-400" /> לא יודע
-              </span>
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center gap-3 text-xs text-brand-navy/60">
+                <span>{answeredCount} מתוך {total} נענו</span>
+                <span className="flex items-center gap-1">
+                  <span className="h-2.5 w-2.5 rounded-full bg-emerald-400" /> סגור על זה
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="h-2.5 w-2.5 rounded-full bg-amber-400" /> לא סגור
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="h-2.5 w-2.5 rounded-full bg-rose-400" /> לא יודע
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={handleResetBoard}
+                className="flex items-center gap-1.5 rounded-full border border-brand-navy/15 bg-white px-3 py-1 text-xs font-semibold text-brand-navy/70 transition-colors hover:border-rose-400 hover:text-rose-600"
+              >
+                <RotateCcw size={13} />
+                איפוס לוח
+              </button>
             </div>
-            <div className="grid grid-cols-8 gap-2 sm:grid-cols-10">
+            <div className="grid grid-cols-6 gap-2.5 sm:grid-cols-8">
               {queue.map((q, i) => {
                 const answer = answers[i] ?? null;
                 const level = confidence[i] ?? null;
                 const isCurrent = i === currentIndex;
+                const isAnswered = answer !== null;
+                const isCorrect = isAnswered && answer === q.correctAnswer;
                 let cellClass =
                   "border-brand-navy/15 bg-brand-cream text-brand-navy/60 hover:border-brand-gold";
                 if (level === "confident") {
@@ -359,24 +391,55 @@ export default function PracticeSuite() {
                   cellClass = "border-amber-400 bg-amber-50 text-amber-700";
                 } else if (level === "unknown") {
                   cellClass = "border-rose-400 bg-rose-50 text-rose-700";
-                } else if (answer !== null) {
-                  cellClass =
-                    answer === q.correctAnswer
-                      ? "border-emerald-400 bg-emerald-50 text-emerald-700"
-                      : "border-rose-400 bg-rose-50 text-rose-700";
+                } else if (isAnswered) {
+                  cellClass = isCorrect
+                    ? "border-emerald-400 bg-emerald-50 text-emerald-700"
+                    : "border-rose-400 bg-rose-50 text-rose-700";
                 }
                 return (
-                  <button
-                    key={`${q.id}-${i}`}
-                    type="button"
-                    onClick={() => goTo(i)}
-                    aria-current={isCurrent}
-                    className={`flex h-9 w-9 items-center justify-center rounded-lg border text-xs font-bold transition-colors ${cellClass} ${
-                      isCurrent ? "ring-2 ring-brand-gold ring-offset-1" : ""
-                    }`}
-                  >
-                    {i + 1}
-                  </button>
+                  <div key={`${q.id}-${i}`} className="relative">
+                    <button
+                      type="button"
+                      onClick={() => goTo(i)}
+                      aria-current={isCurrent}
+                      title={`שאלה ${i + 1} מתוך ${total} (#${q.id.replace(/^q/, "")})`}
+                      className={`flex h-12 w-12 flex-col items-center justify-center gap-0.5 rounded-lg border text-xs font-bold leading-none transition-colors ${cellClass} ${
+                        isCurrent ? "ring-2 ring-brand-gold ring-offset-1" : ""
+                      }`}
+                    >
+                      <span>{i + 1}</span>
+                      <span className="text-[9px] font-normal opacity-60">
+                        #{q.id.replace(/^q/, "")}
+                      </span>
+                    </button>
+                    {isAnswered && (
+                      <>
+                        <span
+                          className={`pointer-events-none absolute -top-1.5 -start-1.5 flex h-4 w-4 items-center justify-center rounded-full border border-white text-white ${
+                            isCorrect ? "bg-emerald-500" : "bg-rose-500"
+                          }`}
+                        >
+                          {isCorrect ? (
+                            <CheckCircle2 size={11} strokeWidth={3} />
+                          ) : (
+                            <XCircle size={11} strokeWidth={3} />
+                          )}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleResetQuestion(i);
+                          }}
+                          aria-label={`אפס את שאלה ${i + 1}`}
+                          title="אפס שאלה זו"
+                          className="absolute -bottom-1.5 -end-1.5 flex h-4 w-4 items-center justify-center rounded-full border border-white bg-brand-navy/60 text-white transition-colors hover:bg-rose-600"
+                        >
+                          <X size={9} strokeWidth={3} />
+                        </button>
+                      </>
+                    )}
+                  </div>
                 );
               })}
             </div>
