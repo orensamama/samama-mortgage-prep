@@ -659,7 +659,7 @@ function QuestionCard({
   onOpenMap: () => void;
 }) {
   const [showDetailed, setShowDetailed] = useState(false);
-  const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
+  const [openFaqIndices, setOpenFaqIndices] = useState<Set<number>>(new Set());
   const [reportOpen, setReportOpen] = useState(false);
 
   return (
@@ -794,7 +794,7 @@ function QuestionCard({
                   </p>
                   <div className="flex flex-col gap-2">
                     {question.conceptFaqs.map((faq, i) => {
-                      const open = openFaqIndex === i;
+                      const open = openFaqIndices.has(i);
                       return (
                         <div
                           key={i}
@@ -803,7 +803,15 @@ function QuestionCard({
                           <button
                             type="button"
                             onClick={() =>
-                              setOpenFaqIndex((prev) => (prev === i ? null : i))
+                              setOpenFaqIndices((prev) => {
+                                const next = new Set(prev);
+                                if (next.has(i)) {
+                                  next.delete(i);
+                                } else {
+                                  next.add(i);
+                                }
+                                return next;
+                              })
                             }
                             aria-expanded={open}
                             className="flex w-full items-center justify-between gap-2 px-3 py-2.5 text-start text-sm font-semibold text-brand-navy"
